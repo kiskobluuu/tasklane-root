@@ -1,1 +1,159 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Get BetweenPay</title><link rel="stylesheet" href="commercial.css"></head><body><div class="wrap"><nav class="nav"><a class="brand" href="./"><span class="mark">BP</span><span>Between<b>Pay</b></span></a><div class="navlinks"><a class="keep" href="login.html">Already purchased? Sign in</a></div></nav><div class="card"><div class="sandbox">SANDBOX TEST MODE — no real money will move.</div><div class="kicker">ONE-TIME PURCHASE</div><h1>Get BetweenPay.</h1><p class="lead">Know what is actually safe to spend before your next payday.</p><div class="price">$12.99 <small>USD</small></div><div class="fine">One-time personal access • no subscription</div><div class="field"><label>Access email</label><input id="email" type="email" autocomplete="email" placeholder="you@example.com"></div><label style="display:flex;gap:9px;align-items:flex-start;font-size:13px;color:#526979;line-height:1.5;margin:16px 0 20px"><input id="agree" type="checkbox" style="margin-top:3px"><span>I agree to the <a href="terms.html" target="_blank">Terms</a> and acknowledge the <a href="privacy.html" target="_blank">Privacy Policy</a> and <a href="refunds.html" target="_blank">No-Refund Digital Product Policy</a>.</span></label><div id="paypal"></div><div id="msg" class="notice hidden" style="margin-top:16px"></div><p class="fine" style="margin-top:18px">Payments are processed by PayPal. BetweenPay does not receive your PayPal password or card details.</p></div></div><script src="config.js"></script><script>(async()=>{const cfg=BETWEENPAY_CONFIG,email=document.getElementById("email"),agree=document.getElementById("agree"),msg=document.getElementById("msg");function show(t,e=false){msg.textContent=t;msg.classList.remove("hidden");msg.style.background=e?"#fff1f1":"#eef9f6";msg.style.borderColor=e?"#f4c7c7":"#ccefe7"}try{const pub=await fetch(cfg.PUBLIC_CONFIG_URL).then(r=>r.json());if(!pub.clientId)throw new Error("PayPal Sandbox is not configured.");const s=document.createElement("script");s.src="https://www.paypal.com/sdk/js?client-id="+encodeURIComponent(pub.clientId)+"&currency="+encodeURIComponent(pub.currency||"USD")+"&intent=capture";s.onload=()=>paypal.Buttons({createOrder:async()=>{if(!email.value||!email.checkValidity())throw new Error("Enter a valid email address.");if(!agree.checked)throw new Error("Please accept the purchase terms.");const r=await fetch(cfg.SUPABASE_URL+"/functions/v1/create-paypal-order",{method:"POST",headers:{"Content-Type":"application/json","apikey":cfg.SUPABASE_PUBLISHABLE_KEY},body:JSON.stringify({email:email.value.trim().toLowerCase()})});const j=await r.json();if(!r.ok)throw new Error(j.error||"Could not start checkout.");return j.id;},onApprove:async(data)=>{show("Confirming your purchase…");const r=await fetch(cfg.SUPABASE_URL+"/functions/v1/capture-paypal-order",{method:"POST",headers:{"Content-Type":"application/json","apikey":cfg.SUPABASE_PUBLISHABLE_KEY},body:JSON.stringify({orderID:data.orderID,email:email.value.trim().toLowerCase()})});const j=await r.json();if(!r.ok||!j.ok){show(j.error||"Could not confirm payment.",true);return;}location.href="success.html?email="+encodeURIComponent(email.value.trim().toLowerCase());},onCancel:()=>show("Checkout cancelled."),onError:(e)=>show(e?.message||"Checkout could not be completed. Please try again.",true)}).render("#paypal");s.onerror=()=>show("PayPal could not load. Refresh and try again.",true);document.head.appendChild(s)}catch(e){show(e.message||"Could not load checkout.",true)}})();</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Get BetweenPay</title>
+<link rel="stylesheet" href="commercial.css">
+</head>
+<body>
+<div class="wrap">
+  <nav class="nav">
+    <a class="brand" href="./"><span class="mark">BP</span><span>Between<b>Pay</b></span></a>
+    <div class="navlinks"><a class="keep" href="login.html">Already purchased? Sign in</a></div>
+  </nav>
+
+  <div class="card">
+    <div class="sandbox">SANDBOX TEST MODE — no real money will move.</div>
+    <div class="kicker">ONE-TIME PURCHASE</div>
+    <h1>Get BetweenPay.</h1>
+    <p class="lead">Know what is actually safe to spend before your next payday.</p>
+
+    <div class="price">$12.99 <small>USD</small></div>
+    <div class="fine">One-time personal access • no subscription</div>
+
+    <div class="field">
+      <label for="email">Access email</label>
+      <input id="email" type="email" autocomplete="email" placeholder="you@example.com">
+    </div>
+
+    <label style="display:flex;gap:9px;align-items:flex-start;font-size:13px;color:#526979;line-height:1.5;margin:16px 0 20px">
+      <input id="agree" type="checkbox" style="margin-top:3px">
+      <span>I agree to the <a href="terms.html" target="_blank">Terms</a> and acknowledge the <a href="privacy.html" target="_blank">Privacy Policy</a> and <a href="refunds.html" target="_blank">No-Refund Digital Product Policy</a>.</span>
+    </label>
+
+    <button id="continueBtn" class="btn primary" style="width:100%;margin-bottom:14px">Continue to PayPal</button>
+
+    <div id="paypalWrap" class="hidden">
+      <div class="fine" style="margin-bottom:10px;text-align:center">Choose how you want to pay:</div>
+      <div id="paypal"></div>
+    </div>
+
+    <div id="msg" class="notice hidden" style="margin-top:16px"></div>
+
+    <p class="fine" style="margin-top:18px">Payments are processed by PayPal. BetweenPay does not receive your PayPal password or card details.</p>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+(()=>{
+  const cfg=BETWEENPAY_CONFIG;
+  const email=document.getElementById("email");
+  const agree=document.getElementById("agree");
+  const msg=document.getElementById("msg");
+  const continueBtn=document.getElementById("continueBtn");
+  const paypalWrap=document.getElementById("paypalWrap");
+  let paypalLoaded=false;
+  let rendering=false;
+
+  function show(t,e=false){
+    msg.textContent=t;
+    msg.classList.remove("hidden");
+    msg.style.background=e?"#fff1f1":"#eef9f6";
+    msg.style.borderColor=e?"#f4c7c7":"#ccefe7";
+  }
+  function clearMsg(){msg.classList.add("hidden");}
+
+  async function loadPayPal(){
+    if(paypalLoaded) return true;
+
+    const pubRes=await fetch(cfg.PUBLIC_CONFIG_URL,{cache:"no-store"});
+    const pub=await pubRes.json();
+    if(!pubRes.ok || !pub.clientId) throw new Error(pub.error || "PayPal Sandbox is not configured.");
+
+    await new Promise((resolve,reject)=>{
+      const s=document.createElement("script");
+      s.src="https://www.paypal.com/sdk/js?client-id="+encodeURIComponent(pub.clientId)+"&currency="+encodeURIComponent(pub.currency||"USD")+"&intent=capture";
+      s.onload=()=>resolve();
+      s.onerror=()=>reject(new Error("PayPal could not load in this browser. Please refresh and try again."));
+      document.head.appendChild(s);
+    });
+
+    if(!window.paypal || !window.paypal.Buttons) throw new Error("PayPal checkout did not initialize.");
+    paypalLoaded=true;
+    return true;
+  }
+
+  async function renderPayPal(){
+    if(rendering) return;
+    rendering=true;
+    continueBtn.disabled=true;
+    continueBtn.textContent="Loading PayPal…";
+    clearMsg();
+
+    try{
+      const accessEmail=email.value.trim().toLowerCase();
+      if(!accessEmail || !email.checkValidity()) throw new Error("Enter a valid access email address.");
+      if(!agree.checked) throw new Error("Please accept the purchase terms before continuing.");
+
+      await loadPayPal();
+
+      document.getElementById("paypal").innerHTML="";
+      paypalWrap.classList.remove("hidden");
+
+      await paypal.Buttons({
+        createOrder:async()=>{
+          const currentEmail=email.value.trim().toLowerCase();
+          const r=await fetch(cfg.SUPABASE_URL+"/functions/v1/create-paypal-order",{
+            method:"POST",
+            headers:{
+              "Content-Type":"application/json",
+              "apikey":cfg.SUPABASE_PUBLISHABLE_KEY
+            },
+            body:JSON.stringify({email:currentEmail})
+          });
+          const j=await r.json();
+          if(!r.ok || !j.id) throw new Error(j.error || "Could not start checkout.");
+          return j.id;
+        },
+        onApprove:async(data)=>{
+          show("Confirming your purchase…");
+          const currentEmail=email.value.trim().toLowerCase();
+          const r=await fetch(cfg.SUPABASE_URL+"/functions/v1/capture-paypal-order",{
+            method:"POST",
+            headers:{
+              "Content-Type":"application/json",
+              "apikey":cfg.SUPABASE_PUBLISHABLE_KEY
+            },
+            body:JSON.stringify({orderID:data.orderID,email:currentEmail})
+          });
+          const j=await r.json();
+          if(!r.ok || !j.ok){
+            show(j.error || "Could not confirm payment.",true);
+            return;
+          }
+          location.href="success.html?email="+encodeURIComponent(currentEmail);
+        },
+        onCancel:()=>show("Checkout cancelled."),
+        onError:(e)=>show((e&&e.message)||"Checkout could not be completed. Please try again.",true)
+      }).render("#paypal");
+
+      continueBtn.classList.add("hidden");
+      email.readOnly=true;
+      agree.disabled=true;
+    }catch(e){
+      show(e.message || "Could not load PayPal checkout.",true);
+      continueBtn.disabled=false;
+      continueBtn.textContent="Continue to PayPal";
+    }finally{
+      rendering=false;
+    }
+  }
+
+  continueBtn.addEventListener("click",renderPayPal);
+})();
+</script>
+</body>
+</html>
