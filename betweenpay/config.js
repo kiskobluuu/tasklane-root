@@ -1,0 +1,1 @@
+window.BETWEENPAY_CONFIG={SUPABASE_URL:"https://lvqnwnzuqcxpdryppmpm.supabase.co",SUPABASE_PUBLISHABLE_KEY:"sb_publishable_uxqKE783zcNmy7tkVgDCqQ_0zJOPXvc",PUBLIC_CONFIG_URL:"https://lvqnwnzuqcxpdryppmpm.supabase.co/functions/v1/betweenpay-public-config",PRODUCT_PRICE:"12.99",PRODUCT_CURRENCY:"USD",SITE_URL:"https://betweenpay.tasklaneco.com"};
