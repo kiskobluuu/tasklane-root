@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Confirming purchase — BetweenPay</title>
+<link rel="stylesheet" href="commercial.css">
+</head>
+<body>
+<div class="wrap">
+<nav class="nav"><a class="brand" href="./"><span class="mark">BP</span><span>Between<b>Pay</b></span></a></nav>
+<div class="card">
+<div class="kicker">PAYMENT CONFIRMATION</div>
+<h1>Confirming your BetweenPay purchase…</h1>
+<p id="status" class="lead">Please keep this page open for a moment.</p>
+<div id="msg" class="notice hidden" style="margin-top:16px"></div>
+</div>
+</div>
+<script src="config.js"></script>
+<script>
+(async()=>{
+ const cfg=BETWEENPAY_CONFIG;
+ const q=new URLSearchParams(location.search);
+ const email=(q.get("email")||"").trim().toLowerCase();
+ const token=q.get("token")||"";
+ const msg=document.getElementById("msg");
+ const status=document.getElementById("status");
+ function show(t,e=false){msg.textContent=t;msg.classList.remove("hidden");msg.style.background=e?"#fff1f1":"#eef9f6";msg.style.borderColor=e?"#f4c7c7":"#ccefe7";}
+ try{
+   if(!email||!token) throw new Error("The PayPal return information is incomplete.");
+   const r=await fetch(cfg.SUPABASE_URL+"/functions/v1/capture-paypal-order",{method:"POST",headers:{"Content-Type":"application/json","apikey":cfg.SUPABASE_PUBLISHABLE_KEY},body:JSON.stringify({orderID:token,email})});
+   const j=await r.json();
+   if(!r.ok||!j.ok) throw new Error(j.error||"Could not confirm payment.");
+   status.textContent="Payment confirmed.";
+   show("Success — your BetweenPay access has been activated.");
+   setTimeout(()=>location.replace("success.html?email="+encodeURIComponent(email)),900);
+ }catch(e){status.textContent="We could not finish confirming this purchase.";show(e.message||"Could not confirm payment.",true);}
+})();
+</script>
+</body>
+</html>
