@@ -27,7 +27,7 @@
   <title>BetweenPay</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-(async()=>{
+window.bpAccessReady=(async()=>{
  const overlay=document.createElement("div"); overlay.id="bpGate"; overlay.style="position:fixed;inset:0;z-index:2147483647;background:#f5f9fb;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui;color:#071f33";
  overlay.innerHTML='<div style="max-width:440px;text-align:center"><div style="width:28px;height:28px;margin:0 auto 16px;border:3px solid #d5e5e9;border-top-color:#17a79a;border-radius:50%;animation:spin .8s linear infinite"></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style><strong>Checking BetweenPay access…</strong></div>';
  document.documentElement.appendChild(overlay);
@@ -35,9 +35,15 @@
   const sb=supabase.createClient("https://lvqnwnzuqcxpdryppmpm.supabase.co","sb_publishable_uxqKE783zcNmy7tkVgDCqQ_0zJOPXvc");
   const {data:{session}}=await sb.auth.getSession();
   if(!session){ location.replace("../login.html?next=app/"); return; }
+  const {data:{user},error:userError}=await sb.auth.getUser();
+  if(userError||!user){ location.replace("../login.html?next=app/"); return; }
+  window.bpSupabase=sb;
+  window.bpSession=session;
+  window.bpUser=user;
   const {data,error}=await sb.from("betweenpay_entitlements").select("status").eq("product","betweenpay").eq("status","active").maybeSingle();
   if(error||!data){ overlay.innerHTML='<div style="max-width:440px;background:white;border:1px solid #dce7ec;border-radius:24px;padding:30px;text-align:center"><h2>BetweenPay access required</h2><p style="color:#607786;line-height:1.5">No active purchase was found for this signed-in email.</p><p><a href="../checkout.html" style="font-weight:800;color:#087d73">Get BetweenPay</a> · <a href="../login.html" style="color:#38566b">Use another email</a></p></div>'; return; }
   overlay.remove();
+  return {sb,session,user};
  }catch(e){ overlay.innerHTML='<div style="max-width:440px;background:white;border:1px solid #dce7ec;border-radius:24px;padding:30px;text-align:center"><h2>Could not verify access</h2><p style="color:#607786">Check your connection and reload.</p></div>'; }
 })();
 </script></head>
@@ -187,7 +193,8 @@ function sortByDate(arr,key='date'){ return [...arr].sort((a,b)=>String(a[key]).
 function esc(s=''){ return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 
 const currencySymbols={USD:'$',BSD:'$',CAD:'C$',GBP:'£',EUR:'€'};
-let state = loadState();
+let state = defaultState();
+let cloudSaveTimer=null;
 let currentView='home';
 let onboardingStep=0;
 let tourStep=0;
@@ -198,18 +205,65 @@ let draft={
 };
 
 function defaultState(){return {version:2,onboarded:false,tourSeen:false,profile:{name:'',currency:'USD',payFrequency:'biweekly',safetyBuffer:0},cashBalance:0,paychecks:[],bills:[],goals:[]};}
-function loadState(){
+function accountKey(){
+  const id=window.bpUser?.id;
+  return id?`${KEY}:${id}`:KEY;
+}
+function readStored(key){
+  try{const raw=localStorage.getItem(key);return raw?normalizeState(JSON.parse(raw)):null;}catch(e){return null;}
+}
+function readLegacyState(){
   try{
     const fresh=JSON.parse(localStorage.getItem(KEY)); if(fresh) return normalizeState(fresh);
-    const old=JSON.parse(localStorage.getItem(OLD_KEY)); if(old){ const migrated=normalizeState({...old,version:2,tourSeen:false}); localStorage.setItem(KEY,JSON.stringify(migrated)); return migrated; }
+    const old=JSON.parse(localStorage.getItem(OLD_KEY)); if(old) return normalizeState({...old,version:2,tourSeen:false});
   }catch(e){}
-  return defaultState();
+  return null;
+}
+async function hydrateState(){
+  const access=await window.bpAccessReady;
+  if(!access?.sb||!access?.user)return false;
+  window.bpSupabase=access.sb;window.bpSession=access.session;window.bpUser=access.user;
+  const local=readStored(accountKey());
+  const {data,error}=await access.sb.from('betweenpay_user_data').select('data,updated_at').eq('user_id',access.user.id).maybeSingle();
+  if(error){
+    console.error('BetweenPay cloud load failed',error);
+    state=local||defaultState();
+    return true;
+  }
+  if(data?.data){
+    state=normalizeState(data.data);
+  }else{
+    const legacy=local?null:readLegacyState();
+    state=local||legacy||defaultState();
+    if(legacy){try{localStorage.removeItem(KEY);localStorage.removeItem(OLD_KEY);}catch(e){}}
+    await syncCloudState(true);
+  }
+  try{localStorage.setItem(accountKey(),JSON.stringify(state));}catch(e){}
+  return true;
 }
 function normalizeState(s){
   const d=defaultState(); s={...d,...s}; s.profile={...d.profile,...(s.profile||{})}; s.paychecks=Array.isArray(s.paychecks)?s.paychecks:[]; s.bills=Array.isArray(s.bills)?s.bills:[]; s.goals=(Array.isArray(s.goals)?s.goals:[]).map(g=>({id:g.id||uid(),name:g.name||'Goal',type:g.type||'Savings',perPaycheck:Number(g.perPaycheck||0),target:Number(g.target||1000),current:Number(g.current ?? ((Number(g.progress||0)/100)*Number(g.target||1000)))})); return s;
 }
-function save(){ try{ localStorage.setItem(KEY,JSON.stringify(state)); return true; }catch(e){ return false; } }
-function clearStored(){ try{localStorage.removeItem(KEY);localStorage.removeItem(OLD_KEY);}catch(e){} }
+async function syncCloudState(silent=true){
+  const sb=window.bpSupabase,user=window.bpUser;
+  if(!sb||!user)return false;
+  const snapshot=JSON.parse(JSON.stringify(state));
+  const {error}=await sb.from('betweenpay_user_data').upsert({user_id:user.id,data:snapshot,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+  if(error){
+    console.error('BetweenPay cloud save failed',error);
+    if(!silent&&typeof toast==='function')toast('Saved on this device; cloud sync will retry');
+    return false;
+  }
+  return true;
+}
+function scheduleCloudSave(){
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer=setTimeout(()=>syncCloudState(true),250);
+}
+function save(){
+  try{localStorage.setItem(accountKey(),JSON.stringify(state));scheduleCloudSave();return true;}catch(e){return false;}
+}
+function clearStored(){try{localStorage.removeItem(accountKey());localStorage.removeItem(KEY);localStorage.removeItem(OLD_KEY);}catch(e){}}
 function sym(currency=state.profile.currency){ return currencySymbols[currency]||'$'; }
 function money(n,currency=state.profile.currency){ const v=Number(n||0); const sign=v<0?'-':''; return `${sign}${sym(currency)}${Math.abs(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`; }
 function shortMoney(n,currency=state.profile.currency){ const v=Number(n||0); const sign=v<0?'-':''; return `${sign}${sym(currency)}${Math.abs(Math.round(v)).toLocaleString()}`; }
@@ -250,7 +304,9 @@ function safeToSpend(){ return Number(state.cashBalance||0)-upcomingBillsTotal()
 function dailyGuide(){ const p=nextPaycheck(); if(!p)return 0; return Math.max(0,safeToSpend())/Math.max(1,daysUntil(p.date)); }
 function breakdown(){return {balance:Number(state.cashBalance||0),bills:upcomingBillsTotal(),goals:reservedGoals(),buffer:Number(state.profile.safetyBuffer||0),safe:safeToSpend()};}
 
-function init(){
+async function init(){
+  const ready=await hydrateState();
+  if(!ready)return;
   wireBaseEvents();
   if(state.onboarded){ $('#onboarding').classList.add('hidden'); $('#appShell').classList.remove('hidden'); renderAll(); if(!state.tourSeen)setTimeout(()=>showTour(),250); }
   else renderOnboarding();
@@ -327,10 +383,10 @@ function renderForecast(){
   $('#view-forecast').innerHTML=`<div class="grid grid-3 forecast-summary"><div class="card metric ${low<0?'warning-card':'positive-card'}"><div class="metric-label">LOWEST PROJECTED BALANCE</div><div class="metric-value">${money(low)}</div><div class="metric-note">${low<0?'Your forecast drops below zero':'No negative balance in this window'}</div></div><div class="card metric"><div class="metric-label">NEXT MONEY EVENT</div><div class="metric-value">${next?fmtDate(next.date):'—'}</div><div class="metric-note">${next?esc(next.label):'Add paychecks and bills to build a forecast'}</div></div><div class="card metric"><div class="metric-label">PROJECTED END BALANCE</div><div class="metric-value">${money(end)}</div><div class="metric-note">After the next ${pts.length} money events</div></div></div><div class="card"><div class="section-head" style="margin-top:0"><div><h2>Cash-flow path</h2><p>Income raises your available balance; bills and protected goals reduce it.</p></div></div>${pts.length?`<div class="forecast-chart">${pts.map(p=>`<div class="bar-wrap"><div class="bar ${p.balance<0?'neg':''}" style="height:${Math.max(5,Math.abs(p.balance)/max*100)}%" title="${esc(p.label)}: ${money(p.balance)}"></div><div class="bar-label">${asDate(p.date).toLocaleDateString(undefined,{month:'short',day:'numeric'})}</div></div>`).join('')}</div><div class="timeline" style="margin-top:24px">${pts.map(p=>`<div class="timeline-row"><div class="timeline-date">${asDate(p.date).toLocaleDateString(undefined,{month:'short',day:'numeric'})}</div><span class="timeline-dot ${p.kind==='Bill'?'bill':''}"></span><div class="timeline-main"><strong>${esc(p.label)}</strong><small>${p.kind} · ${p.amount>=0?'+':''}${money(p.amount)}</small></div><div class="timeline-balance">${money(p.balance)}</div></div>`).join('')}</div>`:`<div class="empty"><div class="empty-icon">⌁</div><h3>Your forecast needs a few inputs</h3><p>Add a paycheck and at least one bill to see how your available balance may change over time.</p><button class="primary-btn" onclick="openQuickAdd()">Quick add</button></div>`}</div>`;
 }
 function renderSettings(){
-  $('#view-settings').innerHTML=`<div class="grid grid-2"><div class="card settings-group"><div class="eyebrow">PROFILE & RULES</div><div class="setting-line"><div><strong>Name</strong><p>Used only to personalize BetweenPay on this device.</p></div><input id="setName" value="${esc(state.profile.name)}"></div><div class="setting-line"><div><strong>Currency</strong><p>Changes how amounts are displayed.</p></div><select id="setCurrency">${['USD','BSD','CAD','GBP','EUR'].map(c=>`<option ${state.profile.currency===c?'selected':''}>${c}</option>`).join('')}</select></div><div class="setting-line"><div><strong>Default pay frequency</strong><p>Used when you add recurring paychecks.</p></div><select id="setFrequency">${['weekly','biweekly','semimonthly','monthly'].map(f=>`<option value="${f}" ${state.profile.payFrequency===f?'selected':''}>${labelFreq(f)}</option>`).join('')}</select></div><div class="setting-line"><div><strong>Safety buffer</strong><p>Always held outside Safe to Spend.</p></div><input id="setBuffer" type="number" min="0" step="1" value="${state.profile.safetyBuffer}"></div><div class="setting-line"><div><strong>Current available balance</strong><p>Money available in the account(s) you use for this plan.</p></div><input id="setBalance" type="number" step="0.01" value="${state.cashBalance}"></div><div class="toolbar"><button id="saveSettings" class="primary-btn">Save changes</button><button id="replayTour" class="ghost-btn">Replay tutorial</button></div></div><div><div class="card privacy-card"><h3>Your data stays on this device</h3><p>BetweenPay currently stores your plan in your browser. No bank login, cloud account, or OpenAI request is required to calculate Safe to Spend.</p></div><div class="card" style="margin-top:18px"><div class="eyebrow">BACKUP & DATA</div><h3 style="margin-top:8px">Keep a copy of your setup</h3><p>Export your BetweenPay data as a JSON backup, then import it later on the same or another device.</p><div class="data-actions" style="margin-top:16px"><button id="exportBtn" class="ghost-btn">Export backup</button><button id="importBtn" class="ghost-btn">Import backup</button></div></div><div class="card" style="margin-top:18px"><div class="eyebrow">START OVER</div><h3 style="margin-top:8px">Reset BetweenPay</h3><p>This permanently erases the BetweenPay data stored in this browser.</p><div class="toolbar"><button id="resetApp" class="danger-btn">Reset app</button></div></div></div></div>`;
+  $('#view-settings').innerHTML=`<div class="grid grid-2"><div class="card settings-group"><div class="eyebrow">PROFILE & RULES</div><div class="setting-line"><div><strong>Name</strong><p>Used only to personalize BetweenPay on this device.</p></div><input id="setName" value="${esc(state.profile.name)}"></div><div class="setting-line"><div><strong>Currency</strong><p>Changes how amounts are displayed.</p></div><select id="setCurrency">${['USD','BSD','CAD','GBP','EUR'].map(c=>`<option ${state.profile.currency===c?'selected':''}>${c}</option>`).join('')}</select></div><div class="setting-line"><div><strong>Default pay frequency</strong><p>Used when you add recurring paychecks.</p></div><select id="setFrequency">${['weekly','biweekly','semimonthly','monthly'].map(f=>`<option value="${f}" ${state.profile.payFrequency===f?'selected':''}>${labelFreq(f)}</option>`).join('')}</select></div><div class="setting-line"><div><strong>Safety buffer</strong><p>Always held outside Safe to Spend.</p></div><input id="setBuffer" type="number" min="0" step="1" value="${state.profile.safetyBuffer}"></div><div class="setting-line"><div><strong>Current available balance</strong><p>Money available in the account(s) you use for this plan.</p></div><input id="setBalance" type="number" step="0.01" value="${state.cashBalance}"></div><div class="toolbar"><button id="saveSettings" class="primary-btn">Save changes</button><button id="replayTour" class="ghost-btn">Replay tutorial</button></div></div><div><div class="card privacy-card"><h3>Your plan is saved to your BetweenPay account</h3><p>Your planner data syncs securely to your signed-in account so it can be restored when you return or use another device. A browser copy is also kept for resilience. No bank login or OpenAI request is required to calculate Safe to Spend.</p></div><div class="card" style="margin-top:18px"><div class="eyebrow">BACKUP & DATA</div><h3 style="margin-top:8px">Keep a copy of your setup</h3><p>Export your BetweenPay data as a JSON backup, then import it later on the same or another device.</p><div class="data-actions" style="margin-top:16px"><button id="exportBtn" class="ghost-btn">Export backup</button><button id="importBtn" class="ghost-btn">Import backup</button></div></div><div class="card" style="margin-top:18px"><div class="eyebrow">START OVER</div><h3 style="margin-top:8px">Reset BetweenPay</h3><p>This permanently erases the BetweenPay data stored in this browser.</p><div class="toolbar"><button id="resetApp" class="danger-btn">Reset app</button></div></div></div></div>`;
   $('#saveSettings').onclick=()=>{state.profile.name=$('#setName').value.trim();state.profile.currency=$('#setCurrency').value;state.profile.payFrequency=$('#setFrequency').value;state.profile.safetyBuffer=Number($('#setBuffer').value||0);state.cashBalance=Number($('#setBalance').value||0);save();renderAll();toast('Settings saved');};
   $('#replayTour').onclick=()=>{tourStep=0;showTour();}; $('#exportBtn').onclick=exportData; $('#importBtn').onclick=()=>$('#importInput').click();
-  $('#resetApp').onclick=()=>{if(confirm('Reset BetweenPay and erase all data stored on this device?')){clearStored();location.reload();}};
+  $('#resetApp').onclick=async()=>{if(confirm('Reset BetweenPay and erase your saved planner data?')){clearTimeout(cloudSaveTimer);state=defaultState();try{localStorage.setItem(accountKey(),JSON.stringify(state));}catch(e){}const synced=await syncCloudState(false);if(synced)location.reload();}};
 }
 
 function openWhySafe(){
