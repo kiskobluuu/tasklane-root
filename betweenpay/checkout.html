@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Get BetweenPay</title><link rel="stylesheet" href="commercial.css"></head>
 <body><div class="wrap"><nav class="nav"><a class="brand" href="./"><span class="mark">BP</span><span>Between<b>Pay</b></span></a><div class="navlinks"><a class="keep" href="login.html">Already purchased? Sign in</a></div></nav>
-<div class="card"><div class="sandbox">SANDBOX TEST MODE — no real money will move.</div><div class="kicker">ONE-TIME PURCHASE</div><h1>Get BetweenPay.</h1><p class="lead">Know what is actually safe to spend before your next payday.</p><div class="price">$12.99 <small>USD</small></div><div class="fine">One-time personal access • no subscription</div>
+<div class="card"><div id="sandboxBanner" class="sandbox hidden">SANDBOX TEST MODE — no real money will move.</div><div class="kicker">ONE-TIME PURCHASE</div><h1>Get BetweenPay.</h1><p class="lead">Know what is actually safe to spend before your next payday.</p><div class="price"><span id="productPrice">$12.99</span> <small id="productCurrency">USD</small></div><div class="fine">One-time personal access • no subscription</div>
 <div class="field"><label for="email">Access email</label><input id="email" type="email" autocomplete="email" placeholder="you@example.com"></div>
 <label style="display:flex;gap:9px;align-items:flex-start;font-size:13px;color:#526979;line-height:1.5;margin:16px 0 20px"><input id="agree" type="checkbox" style="margin-top:3px"><span>I agree to the <a href="terms.html" target="_blank">Terms</a> and acknowledge the <a href="privacy.html" target="_blank">Privacy Policy</a> and <a href="refunds.html" target="_blank">No-Refund Digital Product Policy</a>.</span></label>
 <button id="continueBtn" class="btn primary" style="width:100%">Continue to PayPal</button>
@@ -9,7 +9,23 @@
 <p class="fine" style="margin-top:18px">Payments are processed by PayPal. BetweenPay does not receive your PayPal password or card details.</p></div></div>
 <script src="config.js"></script>
 <script>
-const cfg=BETWEENPAY_CONFIG,email=document.getElementById("email"),agree=document.getElementById("agree"),btn=document.getElementById("continueBtn"),msg=document.getElementById("msg");
+const cfg=BETWEENPAY_CONFIG,email=document.getElementById("email"),agree=document.getElementById("agree"),btn=document.getElementById("continueBtn"),msg=document.getElementById("msg"),priceEl=document.getElementById("productPrice"),currencyEl=document.getElementById("productCurrency"),sandboxBanner=document.getElementById("sandboxBanner");
+async function loadPublicConfig(){
+  try{
+    const r=await fetch(cfg.PUBLIC_CONFIG_URL,{cache:"no-store"});
+    const j=await r.json();
+    if(!r.ok) throw new Error(j.error||"Could not load checkout configuration.");
+    if(j.price) priceEl.textContent="$"+Number(j.price).toFixed(2);
+    if(j.currency) currencyEl.textContent=j.currency;
+    sandboxBanner.classList.toggle("hidden",j.sandbox!==true);
+    return j;
+  }catch(e){
+    console.error("BetweenPay public config:",e);
+    sandboxBanner.classList.add("hidden");
+    return null;
+  }
+}
+loadPublicConfig();
 function show(t,e=false){msg.textContent=t;msg.classList.remove("hidden");msg.style.background=e?"#fff1f1":"#eef9f6";msg.style.borderColor=e?"#f4c7c7":"#ccefe7";}
 if(new URLSearchParams(location.search).get("cancelled")) show("PayPal checkout was cancelled.");
 btn.onclick=async()=>{
