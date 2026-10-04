@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /app/
+Disallow: /checkout.html
+Disallow: /login.html
+Disallow: /paypal-return.html
+Disallow: /success.html
+Disallow: /referrals.html
+Disallow: /referral-admin.html
+
+Sitemap: https://betweenpay.tasklaneco.com/sitemap.xml
