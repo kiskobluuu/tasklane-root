@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Admin Sign In — BetweenPay</title>
+<link rel="stylesheet" href="commercial.css">
+<style>
+body{background:#f3f7f9}.admin-login{max-width:560px;margin:52px auto 80px}.login-card{background:#fff;border:1px solid var(--line);border-radius:28px;padding:34px;box-shadow:0 22px 60px rgba(7,31,51,.10)}.login-card h1{font-size:42px;letter-spacing:-.04em;margin:10px 0 12px}.login-card .lead{font-size:16px}.private-note{margin:18px 0;padding:14px 16px;border:1px solid #dce9e7;border-radius:14px;background:#f4fbf9;color:#526c7a;font-size:13px;line-height:1.55}.admin-btn{width:100%;margin-top:16px}.back{display:block;text-align:center;margin-top:18px;font-size:13px}
+@media(max-width:620px){.admin-login{margin:24px auto 50px}.login-card{padding:26px 20px;border-radius:22px}.login-card h1{font-size:36px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="nav"><a class="brand" href="./"><span class="mark">BP</span><span>Between<b>Pay</b></span></a></nav>
+<main class="admin-login">
+<section class="login-card">
+<div class="kicker">PRIVATE ADMIN ACCESS</div>
+<h1>Sign in to BetweenPay Admin.</h1>
+<p class="lead">Use the email connected to the authorized owner/admin account. We’ll send a secure one-time sign-in link.</p>
+<div class="private-note"><strong>Separate from customer access.</strong><br>If this browser is currently signed in to a customer account, the admin sign-in will replace that local session after you request the admin link.</div>
+<div class="field"><label for="email">Admin email</label><input id="email" type="email" autocomplete="email" placeholder="owner@example.com"></div>
+<button id="send" class="btn primary admin-btn">Email me an admin sign-in link</button>
+<div id="msg" class="notice hidden" style="margin-top:16px"></div>
+<a class="back" href="./">← Back to BetweenPay</a>
+</section>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+const cfg=BETWEENPAY_CONFIG,sb=supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_PUBLISHABLE_KEY);
+const email=document.getElementById("email"),btn=document.getElementById("send"),msg=document.getElementById("msg");
+const allowed=new Set(["sales-admin.html","referral-admin.html"]);
+let next=new URLSearchParams(location.search).get("next")||"sales-admin.html";
+if(!allowed.has(next))next="sales-admin.html";
+const preset=new URLSearchParams(location.search).get("email");if(preset)email.value=preset;
+function show(t,e=false){msg.textContent=t;msg.classList.remove("hidden");msg.style.background=e?"#fff1f1":"#eef9f6";msg.style.borderColor=e?"#f4c7c7":"#ccefe7"}
+btn.onclick=async()=>{
+  const address=email.value.trim().toLowerCase();
+  if(!address||!email.checkValidity()){show("Enter a valid admin email address.",true);return}
+  btn.disabled=true;btn.textContent="Sending secure link…";msg.classList.add("hidden");
+  try{
+    await sb.auth.signOut({scope:"local"});
+    const redirect=new URL(next,location.href).href;
+    const {error}=await sb.auth.signInWithOtp({email:address,options:{emailRedirectTo:redirect,shouldCreateUser:false}});
+    if(error)throw error;
+    show("Check your email for the secure BetweenPay Admin sign-in link. This link only works for an existing authorized account.");
+  }catch(e){show(e.message||"Could not send the admin sign-in link.",true)}
+  finally{btn.disabled=false;btn.textContent="Email me an admin sign-in link"}
+};
+</script>
+</body>
+</html>
