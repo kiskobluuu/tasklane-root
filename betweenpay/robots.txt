@@ -9,5 +9,6 @@ Disallow: /referrals.html
 Disallow: /referral-admin.html
 Disallow: /sales-admin.html
 Disallow: /admin-login.html
+Disallow: /marketing-admin.html
 
 Sitemap: https://betweenpay.tasklaneco.com/sitemap.xml
