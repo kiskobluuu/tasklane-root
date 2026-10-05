@@ -1,21 +1,152 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Referral Admin — BetweenPay</title><link rel="stylesheet" href="commercial.css"><style>.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}.stat{padding:16px;border:1px solid #dbe7ec;border-radius:16px;background:#f8fbfc}.stat b{display:block;font-size:28px;margin-top:4px}.simrow{display:grid;grid-template-columns:55px 1fr 130px 130px;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid #e4ecef}.tag{font-size:11px;font-weight:900;border-radius:99px;padding:5px 8px;background:#eaf8f4;color:#087767}.danger{background:#fff1f1!important;color:#9f2734!important;border-color:#f1cfd4!important}@media(max-width:760px){.stats{grid-template-columns:1fr 1fr}.simrow{grid-template-columns:45px 1fr}.simrow .actions{grid-column:1/-1}}</style></head><body><main class="legal"><a class="brand" href="./"><span class="mark">BP</span><span>Between<b>Pay</b></span></a><h1>Referral Challenge Admin</h1><div id="app"><p>Checking owner access…</p></div></main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script>
-const sb=supabase.createClient(BETWEENPAY_CONFIG.SUPABASE_URL,BETWEENPAY_CONFIG.SUPABASE_PUBLISHABLE_KEY),app=document.getElementById("app");
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Referral Challenge Admin — BetweenPay</title>
+<link rel="stylesheet" href="commercial.css">
+<style>
+:root{--good:#087767;--warn:#986b00;--bad:#a12b38;--admin:#0a3045}
+body{background:#f3f7f9}.admin-shell{max-width:1480px;margin:0 auto;padding:20px 22px 70px}
+.admin-nav{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:18px}.admin-links{display:flex;gap:10px;align-items:center}.admin-links a{text-decoration:none;font-weight:800}
+.control-hero{background:linear-gradient(135deg,#071f33,#0c4c5c);color:#fff;border-radius:28px;padding:27px 30px;display:grid;grid-template-columns:1fr auto;gap:25px;align-items:center;box-shadow:0 18px 50px rgba(7,31,51,.14)}
+.control-hero h1{margin:6px 0 9px;font-size:clamp(32px,5vw,46px);letter-spacing:-.04em}.control-hero p{margin:4px 0;color:#cfe1e5}.control-actions{display:flex;flex-direction:column;gap:9px;min-width:220px}.control-actions .btn{width:100%}.control-actions .primary{background:#fff;color:#071f33}.control-actions .outline{border:1px solid rgba(255,255,255,.25);color:#fff;background:rgba(255,255,255,.06)}
+.state-pill{display:inline-flex;padding:7px 11px;border-radius:999px;background:rgba(131,234,208,.15);border:1px solid rgba(131,234,208,.28);color:#9cf3dd;font-weight:900;font-size:11px;letter-spacing:.08em}
+.meta-row{display:flex;gap:20px;flex-wrap:wrap;margin-top:14px}.meta-item small{display:block;color:#9fb9c2;text-transform:uppercase;letter-spacing:.08em;font-size:9px;font-weight:900}.meta-item b{font-size:13px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0 26px}.stat{padding:17px 18px;border:1px solid #dbe7ec;border-radius:18px;background:#fff;box-shadow:0 8px 30px rgba(7,31,51,.035)}.stat span{font-size:11px;color:#708692;font-weight:850;text-transform:uppercase;letter-spacing:.06em}.stat b{display:block;font-size:26px;margin-top:5px}.stat small{display:block;color:#81939d;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.panel{background:#fff;border:1px solid #dbe7ec;border-radius:24px;padding:22px;margin:16px 0;box-shadow:0 12px 40px rgba(7,31,51,.045)}.panel-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:15px}.panel-head h2{margin:0;font-size:26px}.panel-head p{margin:4px 0 0;color:#708591;font-size:13px}.panel-tools{display:flex;gap:8px;flex-wrap:wrap}
+.table-wrap{overflow:auto;border:1px solid #e0e9ed;border-radius:18px}.admin-table{width:100%;border-collapse:collapse;min-width:1540px}.admin-table th{position:sticky;top:0;background:#f5faf9;padding:11px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#687f8b;border-bottom:1px solid #dce7ec;z-index:1}.admin-table td{padding:12px 10px;border-bottom:1px solid #edf2f4;font-size:12px;vertical-align:middle}.admin-table tr:last-child td{border-bottom:0}.admin-table tr:hover td{background:#fbfdfd}.rank-cell{font-size:16px;font-weight:950;color:#0b8b7e}.name-cell{font-weight:850}.email-cell{max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#f1f5f7;padding:4px 6px;border-radius:7px}
+.pill{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:900;white-space:nowrap}.pill.good{background:#e8f8f3;color:var(--good)}.pill.warn{background:#fff6d9;color:var(--warn)}.pill.bad{background:#fff0f1;color:var(--bad)}.pill.neutral{background:#eef3f6;color:#59717e}
+.action-menu{display:flex;gap:5px;flex-wrap:wrap}.mini{border:1px solid #d5e2e7;background:#fff;color:#24495a;border-radius:9px;padding:6px 8px;font-size:10px;font-weight:850;cursor:pointer}.mini:hover{background:#f1f7f7}.mini.danger{color:#9f2734;border-color:#efced3}.mini.good{color:#087767;border-color:#c9e6df}
+.empty{text-align:center;padding:34px;color:#718591}.empty strong{display:block;color:#1d4050;margin-bottom:5px}
+.activity-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.activity{padding:12px 0;border-bottom:1px solid #edf2f4}.activity:last-child{border-bottom:0}.activity strong{display:block;font-size:13px}.activity small{color:#7c909b}
+.internal{border:1px dashed #a9c0c9;background:#f8fbfc}.internal summary{cursor:pointer;font-size:18px;font-weight:900;list-style:none}.internal summary::-webkit-details-marker{display:none}.internal summary:after{content:" +";color:#0a8a7d}.internal[open] summary:after{content:" −"}
+.sim-grid{display:grid;grid-template-columns:1fr 1fr 150px;gap:10px;align-items:end;margin-top:18px}.sim-list{margin-top:18px}.simrow{display:grid;grid-template-columns:55px 1fr 130px 170px;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid #e4ecef}.tag{font-size:9px;font-weight:900;border-radius:99px;padding:4px 7px;background:#eaf8f4;color:#087767}
+.winner-grid{display:grid;gap:8px}.winner-row{display:grid;grid-template-columns:60px 1fr 150px 180px;gap:12px;align-items:center;padding:12px;border:1px solid #e2eaee;border-radius:14px}.winner-row select{padding:8px;border:1px solid #cfdde4;border-radius:10px}
+dialog{border:0;border-radius:24px;padding:0;width:min(780px,94vw);box-shadow:0 30px 100px rgba(7,31,51,.25)}dialog::backdrop{background:rgba(7,31,51,.55)}.dialog-head{display:flex;justify-content:space-between;align-items:center;padding:20px 22px;border-bottom:1px solid #e2eaee}.dialog-body{padding:22px;max-height:70vh;overflow:auto}.closex{border:0;background:#edf3f5;border-radius:10px;width:34px;height:34px;font-size:18px;cursor:pointer}.trail-row{padding:13px 0;border-bottom:1px solid #e8eff2}.trail-row:last-child{border-bottom:0}.trail-meta{display:flex;gap:9px;flex-wrap:wrap;color:#718591;font-size:11px;margin-top:5px}
+@media(max-width:1050px){.stats{grid-template-columns:1fr 1fr}.activity-grid{grid-template-columns:1fr}.control-hero{grid-template-columns:1fr}.control-actions{flex-direction:row;min-width:0}.control-actions .btn{width:auto}.sim-grid{grid-template-columns:1fr 1fr}.sim-grid .btn{grid-column:1/-1}}
+@media(max-width:650px){.admin-shell{padding:14px}.stats{grid-template-columns:1fr 1fr}.stat b{font-size:21px}.panel{padding:16px}.control-hero{padding:22px}.control-actions{flex-direction:column}.control-actions .btn{width:100%}.sim-grid{grid-template-columns:1fr}.simrow,.winner-row{grid-template-columns:45px 1fr}.simrow .actions,.winner-row select{grid-column:1/-1}.admin-nav{align-items:flex-start}.admin-links{flex-direction:column;align-items:flex-end}}
+</style>
+</head>
+<body>
+<div class="admin-shell">
+  <div class="admin-nav">
+    <a class="brand" href="./"><span class="mark">BP</span><span>Between<b>Pay</b></span></a>
+    <div class="admin-links"><a href="contest.html" target="_blank">Public contest ↗</a><a href="./">BetweenPay home</a></div>
+  </div>
+  <div id="app"><div class="panel"><p>Checking owner access…</p></div></div>
+</div>
+
+<dialog id="detailDialog"><div class="dialog-head"><strong id="dialogTitle">Participant details</strong><button class="closex" onclick="detailDialog.close()">×</button></div><div id="dialogBody" class="dialog-body"></div></dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+const sb=supabase.createClient(BETWEENPAY_CONFIG.SUPABASE_URL,BETWEENPAY_CONFIG.SUPABASE_PUBLISHABLE_KEY);
+const app=document.getElementById("app"),detailDialog=document.getElementById("detailDialog");
+let currentData=null;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
-async function api(body){const {data:{session}}=await sb.auth.getSession();if(!session){app.innerHTML='<p><a href="login.html">Sign in</a> with the Task Lane owner account.</p>';return null}const r=await fetch(BETWEENPAY_CONFIG.SUPABASE_URL+"/functions/v1/betweenpay-referral-admin",{method:body?"POST":"GET",headers:{"Content-Type":"application/json","apikey":BETWEENPAY_CONFIG.SUPABASE_PUBLISHABLE_KEY,"Authorization":"Bearer "+session.access_token},body:body?JSON.stringify(body):undefined});const d=await r.json();if(!r.ok){alert(d.error||"Admin action failed");return null}return d}
-function fmt(x){return x?new Date(x).toLocaleString():"—"}
-async function load(){const d=await api();if(!d)return;const c=d.contest,s=d.stats||{},ended=c.ends_at&&Date.now()>=new Date(c.ends_at).getTime();const demos=(d.simulation||[]).filter(x=>x.is_demo);app.innerHTML=
-`<div class="card"><h2>Contest: ${esc((ended&&c.status==="live"?"ENDED — READY TO FINALIZE":c.status).toUpperCase())}</h2><p><strong>Start:</strong> ${fmt(c.starts_at)}<br><strong>End:</strong> ${fmt(c.ends_at)}</p><p class="fine">Launching starts the official 30-day clock immediately. It cannot be reset from this page.</p>${c.status==="draft"?'<button class="btn primary" id="launch">Launch 30-day contest now</button>':""}${c.status==="live"&&ended?'<button class="btn primary" id="close">Finalize contest</button>':""}<p style="margin-top:16px"><a href="contest.html" target="_blank">Open public contest page →</a></p></div>
-<div class="stats"><div class="stat">Real entries<b>${s.real_participants||0}</b></div><div class="stat">Rules accepted<b>${s.rules_accepted||0}</b></div><div class="stat">Qualified referrals<b>${s.qualified_referrals||0}</b></div><div class="stat">Demo accounts<b>${s.demo_accounts||0}</b></div></div>
-<div class="card"><h2>Live simulation controls</h2><p class="fine">Demo accounts can be used while the contest is live, but are excluded from official rankings and prizes.</p><div class="field"><label>Demo display name</label><input id="name" placeholder="Demo Tester"></div><div class="field"><label>Simulated referral count</label><input id="count" type="number" min="0" value="10"></div><button class="btn primary" id="demo">Add demo account</button>${demos.length?'<hr style="margin:24px 0;border:0;border-top:1px solid #e4ecef"><h3>Existing demos</h3>'+demos.map(x=>`<div class="simrow"><strong>#${x.rank}</strong><span>${esc(x.display_name)} <span class="tag">DEMO</span></span><span>${x.referrals} referrals</span><span class="actions"><button class="btn" data-edit="${x.id}">Edit</button> <button class="btn danger" data-del="${x.id}">Delete</button></span></div>`).join(""):""}</div>
-<div class="card"><h2>Simulation leaderboard</h2><p class="fine">This combines real entries with demo accounts so you can test positions without changing the public leaderboard.</p>${(d.simulation||[]).map(x=>`<div class="simrow"><strong>#${x.rank}</strong><span>${esc(x.display_name||x.referral_code)} ${x.is_demo?'<span class="tag">DEMO</span>':x.rules_accepted_at?'<span class="tag">REAL</span>':'<span class="tag">RULES PENDING</span>'}</span><span>${x.referrals} referrals</span><span></span></div>`).join("")||"<p>No participants yet.</p>"}</div>
-<div class="card"><h2>Official Top 10 preview</h2><p class="fine">Demo accounts are excluded. This is the ranking that would determine prizes if the contest ended now.</p>${(d.official_preview||[]).map(x=>`<div class="simrow"><strong>#${x.rank}</strong><span>${esc(x.display_name||"Participant")}</span><span>${x.referrals} referrals</span><span></span></div>`).join("")||"<p>No prize-eligible participants yet.</p>"}</div>
-${(d.winners||[]).length?`<div class="card"><h2>Final winner verification</h2><p class="fine">These placements were snapshotted when the contest was finalized.</p>${d.winners.map(w=>`<div class="simrow"><strong>#${w.place}</strong><span>${esc(w.display_name)} — ${Number(w.prize_amount).toLocaleString()}</span><span>${w.referral_count} referrals</span><span class="actions"><select data-winner="${w.place}"><option value="pending" ${w.status==="pending"?"selected":""}>Pending</option><option value="verified" ${w.status==="verified"?"selected":""}>Verified</option><option value="paid" ${w.status==="paid"?"selected":""}>Paid</option></select></span></div>`).join("")}</div>`:""}
-<div class="card"><h2>Recent admin activity</h2>${(d.logs||[]).map(x=>`<p><strong>${esc(x.action)}</strong> · ${fmt(x.created_at)}</p>`).join("")||"<p>No admin actions logged yet.</p>"}</div>`;
-if(document.getElementById("launch"))document.getElementById("launch").onclick=async()=>{if(confirm("Launch the official contest now? This starts the 30-day clock immediately.")){await api({action:"launch"});location.reload()}};
-if(document.getElementById("close"))document.getElementById("close").onclick=async()=>{if(confirm("Finalize the contest and freeze its status as closed?")){await api({action:"close"});location.reload()}};
-document.getElementById("demo").onclick=async()=>{await api({action:"save_demo",display_name:document.getElementById("name").value,demo_referral_count:Number(document.getElementById("count").value)});location.reload()};
-document.querySelectorAll("[data-edit]").forEach(btn=>btn.onclick=async()=>{const row=d.simulation.find(x=>x.id===btn.dataset.edit);const name=prompt("Demo display name",row.display_name||"Demo Account");if(name===null)return;const count=prompt("Simulated referral count",String(row.demo_referral_count||0));if(count===null)return;await api({action:"save_demo",id:row.id,display_name:name,demo_referral_count:Number(count)});location.reload()});
-document.querySelectorAll("[data-del]").forEach(btn=>btn.onclick=async()=>{if(confirm("Delete this demo account?")){await api({action:"delete_demo",id:btn.dataset.del});location.reload()}});document.querySelectorAll("[data-winner]").forEach(sel=>sel.onchange=async()=>{await api({action:"winner_status",place:Number(sel.dataset.winner),status:sel.value});location.reload()});
+const money=n=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:2}).format(Number(n||0));
+const fmt=x=>x?new Date(x).toLocaleString():"—";
+const shortDate=x=>x?new Date(x).toLocaleDateString():"—";
+function daysLeft(c){if(!c.ends_at)return "—";return Math.max(0,Math.ceil((new Date(c.ends_at).getTime()-Date.now())/86400000))}
+function pill(text){
+  const t=String(text||"");
+  const cls=/eligible|paid|verified/i.test(t)?"good":/pending|projected|awaiting|rules/i.test(t)?"warn":/disqual/i.test(t)?"bad":"neutral";
+  return '<span class="pill '+cls+'">'+esc(t)+'</span>';
 }
+async function api(body){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){app.innerHTML='<div class="panel"><p><a href="login.html">Sign in</a> with the Task Lane owner account.</p></div>';return null}
+  const r=await fetch(BETWEENPAY_CONFIG.SUPABASE_URL+"/functions/v1/betweenpay-referral-admin",{method:body?"POST":"GET",headers:{"Content-Type":"application/json","apikey":BETWEENPAY_CONFIG.SUPABASE_PUBLISHABLE_KEY,"Authorization":"Bearer "+session.access_token},body:body?JSON.stringify(body):undefined});
+  const d=await r.json();
+  if(!r.ok){alert(d.error||"Admin action failed");return null}
+  return d;
+}
+function exportParticipant(p){
+  const rows=[
+    ["Rank",p.rank||""],["Display Name",p.display_name||""],["Email",p.email||""],["Referral Code",p.referral_code||""],
+    ["Qualified Referrals",p.referrals||0],["Attributed Purchases",p.attributed_purchases||0],["Gross Referred Revenue",p.gross_revenue||0],
+    ["Joined",p.joined_at||""],["Last Activity",p.last_activity||""],["Eligibility",p.eligibility_status||""],["Winner Status",p.winner_status||""],["Payout Status",p.payout_status||""]
+  ];
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(",")).join("\\n");
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="BetweenPay-contest-"+(p.referral_code||"participant")+".csv";a.click();URL.revokeObjectURL(a.href);
+}
+function openDetails(id){
+  const p=(currentData.official_rows||[]).find(x=>x.id===id);if(!p)return;
+  document.getElementById("dialogTitle").textContent=p.display_name||p.email||"Participant details";
+  const trail=p.referral_trail||[];
+  document.getElementById("dialogBody").innerHTML=
+    '<div class="stats" style="grid-template-columns:repeat(3,1fr);margin-top:0"><div class="stat"><span>Qualified</span><b>'+Number(p.referrals||0)+'</b></div><div class="stat"><span>Revenue</span><b>'+money(p.gross_revenue)+'</b></div><div class="stat"><span>Eligibility</span><div style="margin-top:9px">'+pill(p.eligibility_status)+'</div></div></div>'+
+    '<p><strong>Email:</strong> '+esc(p.email)+'<br><strong>Referral code:</strong> <span class="code">'+esc(p.referral_code)+'</span><br><strong>Joined:</strong> '+fmt(p.joined_at)+'<br><strong>Last activity:</strong> '+fmt(p.last_activity)+'</p>'+
+    '<h3>Referral trail</h3>'+(trail.length?trail.map(r=>'<div class="trail-row"><strong>'+esc(r.referred_email||"Referred customer")+'</strong> '+pill(r.status)+'<div class="trail-meta"><span>Order '+esc(r.paypal_order_id||"—")+'</span><span>'+money(r.amount||0)+' '+esc(r.currency||"")+'</span><span>'+fmt(r.qualified_at)+'</span></div></div>').join(""):'<p class="fine">No referred purchases recorded for this participant.</p>');
+  detailDialog.showModal();
+}
+async function participantAction(id,action,value){
+  if(action==="participant_eligibility"){
+    const verb=value?"restore eligibility for":"disqualify";
+    if(!confirm("Are you sure you want to "+verb+" this participant?"))return;
+    await api({action,id,eligible:value});return load();
+  }
+  if(action==="participant_note"){
+    const note=prompt("Internal note for this participant:");if(!note)return;
+    await api({action,id,note});return load();
+  }
+  if(action==="participant_reviewed"){await api({action,id});alert("Review logged.");return load()}
+}
+function renderTable(rows){
+  if(!rows.length)return '<div class="empty"><strong>No real participants yet.</strong>Participants will appear here after joining the challenge.</div>';
+  return '<div class="table-wrap"><table class="admin-table"><thead><tr><th>Rank</th><th>Display name</th><th>Email</th><th>Referral code</th><th>Qualified referrals</th><th>Attributed purchases</th><th>Gross referred revenue</th><th>Joined</th><th>Last activity</th><th>Eligibility</th><th>Winner status</th><th>Payout status</th><th>Actions</th></tr></thead><tbody>'+
+  rows.map(p=>'<tr><td class="rank-cell">'+(p.rank?"#"+p.rank:"—")+'</td><td class="name-cell">'+esc(p.display_name||"Participant")+'</td><td class="email-cell" title="'+esc(p.email)+'">'+esc(p.email)+'</td><td><span class="code">'+esc(p.referral_code)+'</span></td><td><strong>'+Number(p.referrals||0)+'</strong></td><td>'+Number(p.attributed_purchases||0)+'</td><td><strong>'+money(p.gross_revenue)+'</strong></td><td>'+shortDate(p.joined_at)+'</td><td>'+shortDate(p.last_activity)+'</td><td>'+pill(p.eligibility_status)+'</td><td>'+pill(p.winner_status)+'</td><td>'+pill(p.payout_status)+'</td><td><div class="action-menu"><button class="mini" data-view="'+p.id+'">View</button><button class="mini" data-reviewed="'+p.id+'">Reviewed</button><button class="mini" data-note="'+p.id+'">Note</button><button class="mini" data-export="'+p.id+'">Export</button>'+(p.eligible?'<button class="mini danger" data-disq="'+p.id+'">Disqualify</button>':'<button class="mini good" data-restore="'+p.id+'">Restore</button>')+'</div></td></tr>').join("")+
+  '</tbody></table></div>';
+}
+function render(d){
+  currentData=d;const c=d.contest,s=d.stats||{},ended=c.ends_at&&Date.now()>=new Date(c.ends_at).getTime();
+  const effective=ended&&c.status==="live"?"ENDED — READY TO FINALIZE":String(c.status||"draft").toUpperCase();
+  const top=s.top_performer?esc(s.top_performer.display_name||"Participant")+" · "+Number(s.top_performer.referrals||0)+" referrals":"No leader yet";
+  app.innerHTML=
+  '<section class="control-hero"><div><span class="state-pill">'+esc(effective)+'</span><h1>Referral Challenge Control Center</h1><p>Official contest operations, rankings, revenue, verification and winner administration.</p><div class="meta-row"><div class="meta-item"><small>Start</small><b>'+fmt(c.starts_at)+'</b></div><div class="meta-item"><small>End</small><b>'+fmt(c.ends_at)+'</b></div><div class="meta-item"><small>Days remaining</small><b>'+daysLeft(c)+'</b></div></div></div><div class="control-actions">'+
+    (c.status==="draft"?'<button class="btn primary" id="launch">Launch official 30-day contest</button>':'')+
+    (c.status==="live"&&ended?'<button class="btn primary" id="close">Finalize contest</button>':'')+
+    '<a class="btn outline" href="contest.html" target="_blank">Open public contest page ↗</a></div></section>'+
+  '<div class="stats">'+
+    '<div class="stat"><span>Total entrants</span><b>'+Number(s.real_participants||0)+'</b><small>'+Number(s.rules_accepted||0)+' rules accepted</small></div>'+
+    '<div class="stat"><span>Qualified referrals</span><b>'+Number(s.qualified_referrals||0)+'</b><small>'+Number(s.reversed_or_disqualified||0)+' reversed / disqualified</small></div>'+
+    '<div class="stat"><span>Referred sales</span><b>'+Number(s.total_referred_purchases||0)+'</b><small>'+Number(s.conversion_rate||0).toFixed(1)+'% qualified rate</small></div>'+
+    '<div class="stat"><span>Referred revenue</span><b>'+money(s.referred_revenue)+'</b><small>Completed qualified purchases</small></div>'+
+    '<div class="stat"><span>Prize liability</span><b>'+money(s.projected_prize_liability)+'</b><small>Current projected Top 10</small></div>'+
+    '<div class="stat"><span>Top performer</span><b style="font-size:18px">'+top+'</b><small>Current official ranking</small></div>'+
+    '<div class="stat"><span>Latest qualified referral</span><b style="font-size:18px">'+(s.recent_qualified_referral?shortDate(s.recent_qualified_referral):"—")+'</b><small>'+(s.recent_qualified_referral?fmt(s.recent_qualified_referral):"No referral activity yet")+'</small></div>'+
+    '<div class="stat"><span>Contest status</span><b style="font-size:18px">'+esc(effective)+'</b><small>'+daysLeft(c)+' days remaining</small></div>'+
+  '</div>'+
+  '<section class="panel"><div class="panel-head"><div><h2>Official contest leaderboard</h2><p>The operational ranking table. Demo accounts are excluded from this table and from prize eligibility.</p></div><div class="panel-tools"><span class="pill neutral">'+Number((d.official_rows||[]).length)+' real participants</span></div></div>'+renderTable(d.official_rows||[])+'</section>'+
+  '<div class="activity-grid">'+
+    '<section class="panel"><div class="panel-head"><div><h2>Recent contest activity</h2><p>Owner actions and participant-review history.</p></div></div>'+((d.logs||[]).length?(d.logs||[]).slice(0,15).map(x=>'<div class="activity"><strong>'+esc(String(x.action||"").replaceAll("_"," "))+'</strong><small>'+fmt(x.created_at)+'</small>'+(x.metadata?.note?'<div class="fine" style="margin-top:5px">'+esc(x.metadata.note)+'</div>':'')+'</div>').join(""):'<div class="empty">No admin activity logged yet.</div>')+'</section>'+
+    '<section class="panel"><div class="panel-head"><div><h2>Winner verification & payout</h2><p>Final placements appear here after the contest is finalized.</p></div></div>'+
+      ((d.winners||[]).length?'<div class="winner-grid">'+d.winners.map(w=>'<div class="winner-row"><strong>#'+w.place+'</strong><span><b>'+esc(w.display_name)+'</b><br><span class="fine">'+Number(w.referral_count||0)+' referrals · '+money(w.prize_amount)+'</span></span><span>'+pill(w.status)+'</span><select data-winner="'+w.place+'"><option value="pending" '+(w.status==="pending"?"selected":"")+'>Pending</option><option value="verified" '+(w.status==="verified"?"selected":"")+'>Verified</option><option value="paid" '+(w.status==="paid"?"selected":"")+'>Paid</option><option value="disqualified" '+(w.status==="disqualified"?"selected":"")+'>Disqualified</option></select></div>').join("")+'</div>':'<div class="empty"><strong>No finalized winners yet.</strong>Winner verification becomes available after the contest closes.</div>')+
+    '</section>'+
+  '</div>'+
+  '<details class="panel internal"><summary>Internal simulation tools</summary><p class="fine">Owner/admin testing only. Simulation entries never appear in the public official leaderboard and are never prize-eligible.</p><div class="sim-grid"><div class="field"><label>Simulation display name</label><input id="name" placeholder="Simulation Tester"></div><div class="field"><label>Simulated referral count</label><input id="count" type="number" min="0" value="10"></div><button class="btn primary" id="demo">Add simulation account</button></div>'+
+    ((d.simulation||[]).filter(x=>x.is_demo).length?'<div class="sim-list">'+(d.simulation||[]).filter(x=>x.is_demo).map(x=>'<div class="simrow"><strong>#'+x.rank+'</strong><span>'+esc(x.display_name)+' <span class="tag">SIMULATION</span></span><span>'+x.referrals+' referrals</span><span class="actions"><button class="mini" data-edit="'+x.id+'">Edit</button> <button class="mini danger" data-del="'+x.id+'">Delete</button></span></div>').join("")+'</div>':'<p class="fine" style="margin-top:16px">No simulation accounts currently exist.</p>')+
+  '</details>';
+
+  if(document.getElementById("launch"))document.getElementById("launch").onclick=async()=>{if(confirm("Launch the official contest now? This starts the published 30-day clock immediately.")){await api({action:"launch"});load()}};
+  if(document.getElementById("close"))document.getElementById("close").onclick=async()=>{if(confirm("Finalize the contest and snapshot the official winners?")){await api({action:"close"});load()}};
+  document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>openDetails(b.dataset.view));
+  document.querySelectorAll("[data-reviewed]").forEach(b=>b.onclick=()=>participantAction(b.dataset.reviewed,"participant_reviewed"));
+  document.querySelectorAll("[data-note]").forEach(b=>b.onclick=()=>participantAction(b.dataset.note,"participant_note"));
+  document.querySelectorAll("[data-export]").forEach(b=>b.onclick=()=>{const p=(currentData.official_rows||[]).find(x=>x.id===b.dataset.export);if(p)exportParticipant(p)});
+  document.querySelectorAll("[data-disq]").forEach(b=>b.onclick=()=>participantAction(b.dataset.disq,"participant_eligibility",false));
+  document.querySelectorAll("[data-restore]").forEach(b=>b.onclick=()=>participantAction(b.dataset.restore,"participant_eligibility",true));
+  document.querySelectorAll("[data-winner]").forEach(sel=>sel.onchange=async()=>{if(confirm("Update this winner status to "+sel.value+"?")){await api({action:"winner_status",place:Number(sel.dataset.winner),status:sel.value});load()}else load()});
+
+  if(document.getElementById("demo"))document.getElementById("demo").onclick=async()=>{await api({action:"save_demo",display_name:document.getElementById("name").value,demo_referral_count:Number(document.getElementById("count").value)});load()};
+  document.querySelectorAll("[data-edit]").forEach(btn=>btn.onclick=async()=>{const row=(d.simulation||[]).find(x=>x.id===btn.dataset.edit);const name=prompt("Simulation display name",row?.display_name||"Simulation Account");if(name===null)return;const count=prompt("Simulated referral count",String(row?.demo_referral_count||0));if(count===null)return;await api({action:"save_demo",id:row.id,display_name:name,demo_referral_count:Number(count)});load()});
+  document.querySelectorAll("[data-del]").forEach(btn=>btn.onclick=async()=>{if(confirm("Delete this simulation account?")){await api({action:"delete_demo",id:btn.dataset.del});load()}});
+}
+async function load(){const d=await api();if(d)render(d)}
 load();
-</script></body></html>
+</script>
+</body>
+</html>
