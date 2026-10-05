@@ -7,5 +7,6 @@ Disallow: /paypal-return.html
 Disallow: /success.html
 Disallow: /referrals.html
 Disallow: /referral-admin.html
+Disallow: /sales-admin.html
 
 Sitemap: https://betweenpay.tasklaneco.com/sitemap.xml
