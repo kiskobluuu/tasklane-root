@@ -53,17 +53,17 @@ body{background:
       <div class="kicker">OFFICIAL 30-DAY REFERRAL CHALLENGE</div>
       <h1>Win up to <strong>$10,000 cash.</strong></h1>
       <p class="lead">Purchase BetweenPay, join the challenge, and refer verified new customers to climb the official leaderboard and compete for Top 10 cash prizes.</p>
-      <div class="statusline"><span id="status" class="status-pill"><span class="status-dot"></span>COMING SOON</span><span id="dates" class="datecopy"></span></div>
+      <div class="statusline"><span id="status" class="status-pill"><span class="status-dot"></span>LIVE NOW</span><span id="dates" class="datecopy"></span></div>
       <div class="cta-row">
-        <a id="contestPurchaseBtn" class="btn primary" href="checkout.html">Purchase BetweenPay + be ready</a>
+        <a id="contestPurchaseBtn" class="btn primary" href="checkout.html">Purchase BetweenPay & join now</a>
         <a class="btn secondary" href="#leaderboard">View official leaderboard</a>
       </div>
       <div class="prize-mini"><div><small>1st place</small><b>$10,000</b></div><div><small>2nd place</small><b>$1,000</b></div><div><small>3rd place</small><b>$500</b></div></div>
     </div>
     <aside class="countdown-card">
       <div class="countdown-label">OFFICIAL CONTEST CLOCK</div>
-      <div id="countdown" class="countdown">The 30-day clock has not started.</div>
-      <div class="datecopy">The challenge begins only when this page shows <strong>LIVE NOW</strong> with a published start and end time.</div>
+      <div id="countdown" class="countdown">Loading the live contest clock…</div>
+      <div class="datecopy">The official 30-day contest is LIVE. The countdown uses the published start and end timestamps from the contest system.</div>
     </aside>
   </div>
 </section>
@@ -130,7 +130,7 @@ body{background:
   <div class="faq-grid">
     <details class="faq"><summary>Who can enter?</summary><p>Eligible BetweenPay customers who are at least 18, have a valid active purchase, accept the Official Rules, and may legally participate where they live.</p></details>
     <details class="faq"><summary>What counts as a qualified referral?</summary><p>A new customer attributed to your unique referral link who completes a valid BetweenPay purchase during the live contest period and passes verification.</p></details>
-    <details class="faq"><summary>When does the contest begin?</summary><p>Only when this official page displays LIVE NOW with published start and end timestamps. The live period lasts 30 days.</p></details>
+    <details class="faq"><summary>Is the contest live now?</summary><p>Yes. The official 30-day contest is live now. The countdown above shows the remaining time using the published contest timestamps. Only eligible verified referrals completed during the live period can qualify.</p></details>
     <details class="faq"><summary>How are ties handled?</summary><p>If participants finish with the same qualified-referral total, the participant who reached that tied total first ranks higher.</p></details>
     <details class="faq"><summary>Do refunds still count?</summary><p>No. Refunded, reversed, charged-back, duplicate, self-referred, fraudulent, or otherwise invalid transactions do not qualify and may be removed from standings.</p></details>
     <details class="faq"><summary>When are winners paid?</summary><p>Final standings are verified after the contest closes. Potential winners must complete any reasonable eligibility and payment verification required before prizes are released.</p></details>
@@ -167,7 +167,7 @@ document.getElementById("contestLeadBtn")?.addEventListener("click",async()=>{
   const msg=document.getElementById("contestLeadMsg");
   msg.classList.remove("hidden");
   if(!email||!document.getElementById("contestLeadEmail").checkValidity()){msg.textContent="Enter a valid email address.";return}
-  if(!consent.checked){msg.textContent="Please check the consent box to receive the launch alert.";return}
+  if(!consent.checked){msg.textContent="Please check the consent box if you want the free payday checklist.";return}
   btn.disabled=true;btn.textContent="Adding you…";
   try{
     const a=window.bpAttribution?window.bpAttribution():{};
@@ -184,7 +184,7 @@ document.getElementById("contestLeadBtn")?.addEventListener("click",async()=>{
     const j=await r.json();
     if(!r.ok)throw new Error(j.error||"Could not add your email.");
     msg.textContent=j.message||"You’re on the contest update list.";
-    bpTrack("contest_lead_capture",{placement:"contest_page"});
+    bpTrack("contest_lead_capture",{placement:"contest_page_live"});
   }catch(e){msg.textContent=e.message||"Could not add your email."}
   finally{btn.disabled=false;btn.textContent="Send me contest updates"}
 });
