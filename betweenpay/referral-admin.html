@@ -33,7 +33,7 @@ dialog{border:0;border-radius:24px;padding:0;width:min(780px,94vw);box-shadow:0 
 <div class="admin-shell">
   <div class="admin-nav">
     <a class="brand" href="./"><span class="mark">BP</span><span>Between<b>Pay</b></span></a>
-    <div class="admin-links"><a href="sales-admin.html">Sales & fulfillment</a><a href="contest.html" target="_blank">Public contest ↗</a><a href="./">BetweenPay home</a></div>
+    <div class="admin-links"><a href="sales-admin.html">Sales & fulfillment</a><a href="contest.html" target="_blank">Public contest ↗</a><a href="./">BetweenPay home</a><a href="admin-login.html?next=referral-admin.html">Switch admin</a></div>
   </div>
   <div id="app"><div class="panel"><p>Checking owner access…</p></div></div>
 </div>
@@ -58,10 +58,13 @@ function pill(text){
 }
 async function api(body){
   const {data:{session}}=await sb.auth.getSession();
-  if(!session){app.innerHTML='<div class="panel"><p><a href="login.html">Sign in</a> with the Task Lane owner account.</p></div>';return null}
+  if(!session){location.replace("admin-login.html?next=referral-admin.html");return null}
   const r=await fetch(BETWEENPAY_CONFIG.SUPABASE_URL+"/functions/v1/betweenpay-referral-admin",{method:body?"POST":"GET",headers:{"Content-Type":"application/json","apikey":BETWEENPAY_CONFIG.SUPABASE_PUBLISHABLE_KEY,"Authorization":"Bearer "+session.access_token},body:body?JSON.stringify(body):undefined});
   const d=await r.json();
-  if(!r.ok){alert(d.error||"Admin action failed");return null}
+  if(!r.ok){
+    if(r.status===401||r.status===403){location.replace("admin-login.html?next=referral-admin.html");return null}
+    alert(d.error||"Admin action failed");return null
+  }
   return d;
 }
 function exportParticipant(p){
