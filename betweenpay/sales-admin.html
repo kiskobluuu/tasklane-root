@@ -23,7 +23,7 @@ body{background:#f3f7f9}.admin-shell{max-width:1450px;margin:0 auto;padding:20px
 <div class="admin-shell">
   <div class="admin-nav">
     <a class="brand" href="./"><span class="mark">BP</span><span>Between<b>Pay</b></span></a>
-    <div class="admin-links"><a href="referral-admin.html">Referral admin</a><a href="./">BetweenPay home</a></div>
+    <div class="admin-links"><a href="referral-admin.html">Referral admin</a><a href="./">BetweenPay home</a><a href="admin-login.html?next=sales-admin.html">Switch admin</a></div>
   </div>
   <div id="app"><div class="panel"><p>Checking owner access…</p></div></div>
 </div>
@@ -41,9 +41,14 @@ function statusPill(x){
 }
 async function api(body){
  const {data:{session}}=await sb.auth.getSession();
- if(!session){app.innerHTML='<div class="panel"><h2>Owner sign-in required</h2><p>Use the Task Lane owner account to open the private sales dashboard.</p><a class="btn primary" href="login.html?next=sales-admin.html" style="margin-top:12px">Sign in</a></div>';return null}
+ if(!session){location.replace("admin-login.html?next=sales-admin.html");return null}
  const r=await fetch(BETWEENPAY_CONFIG.SUPABASE_URL+"/functions/v1/betweenpay-sales-admin",{method:body?"POST":"GET",headers:{"Content-Type":"application/json","apikey":BETWEENPAY_CONFIG.SUPABASE_PUBLISHABLE_KEY,"Authorization":"Bearer "+session.access_token},body:body?JSON.stringify(body):undefined});
- const d=await r.json();if(!r.ok){app.innerHTML='<div class="panel"><h2>Could not open dashboard</h2><p>'+esc(d.error||"Admin request failed")+'</p></div>';return null}return d;
+ const d=await r.json();
+ if(!r.ok){
+   if(r.status===401||r.status===403){location.replace("admin-login.html?next=sales-admin.html");return null}
+   app.innerHTML='<div class="panel"><h2>Could not open dashboard</h2><p>'+esc(d.error||"Admin request failed")+'</p></div>';return null
+ }
+ return d;
 }
 function exportCsv(){
  if(!current)return;const cols=["paypal_order_id","email","amount","currency","status","created_at","completed_at","fulfillment_status","access_email_sent_at","entitlement_status","referral_code","fulfillment_error"];
