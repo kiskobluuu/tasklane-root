@@ -126,6 +126,10 @@
             <input id="agree" type="checkbox">
             <span>I agree to the <a href="terms.html" target="_blank">Terms</a> and acknowledge the <a href="privacy.html" target="_blank">Privacy Policy</a> and <a href="refunds.html" target="_blank">No-Refund Digital Product Policy</a>.</span>
           </label>
+          <label class="terms-row" style="margin-top:-6px">
+            <input id="marketingOptIn" type="checkbox">
+            <span>Email me the free BetweenPay payday checklist, occasional product tips, and up to two checkout reminders if I leave checkout unfinished. I can unsubscribe anytime.</span>
+          </label>
 
           <button id="continueBtn" class="btn primary paypal-cta">
             <span class="cta-icon">P</span>
@@ -166,6 +170,7 @@
     const cfg=BETWEENPAY_CONFIG,
       email=document.getElementById("email"),
       agree=document.getElementById("agree"),
+      marketingOptIn=document.getElementById("marketingOptIn"),
       btn=document.getElementById("continueBtn"),
       msg=document.getElementById("msg"),
       priceEl=document.getElementById("productPrice"),
@@ -214,7 +219,19 @@
         const r=await fetch(cfg.SUPABASE_URL+"/functions/v1/create-paypal-order",{
           method:"POST",
           headers:{"Content-Type":"application/json","apikey":cfg.SUPABASE_PUBLISHABLE_KEY},
-          body:JSON.stringify({email:accessEmail,referral_code:refCode})
+          body:JSON.stringify((()=>{
+            const a=window.bpAttribution?window.bpAttribution():{};
+            return {
+              email:accessEmail,
+              referral_code:refCode,
+              marketing_opt_in:marketingOptIn.checked,
+              session_id:a.session_id||"",
+              source:a.source||"",
+              medium:a.medium||"",
+              campaign:a.campaign||"",
+              content:a.content||""
+            };
+          })())
         });
         const j=await r.json();
         if(j.code==="ALREADY_OWNS"){
