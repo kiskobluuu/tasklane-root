@@ -34,8 +34,9 @@ body{background:
 .faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.faq{background:#fff;border:1px solid var(--line);border-radius:18px;padding:0 19px}.faq summary{cursor:pointer;padding:18px 0;font-weight:850}.faq p{color:var(--muted);line-height:1.6;margin:0 0 18px}
 .rules-card{display:grid;grid-template-columns:1.2fr .8fr;gap:26px;background:linear-gradient(145deg,#f2fbf9,#fff);border:1px solid #d5ebe7;border-radius:28px;padding:30px}.rules-card h2{font-size:36px;margin:0 0 10px}.rule-points{display:grid;gap:9px}.rule-point{display:flex;gap:10px;color:#4c6877}.check{color:#0b9285;font-weight:950}
 .rules-cta{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;background:#fff;border:1px solid var(--line);border-radius:20px;padding:22px}.rules-cta strong{font-size:20px;margin-bottom:6px}.rules-cta p{color:var(--muted);line-height:1.5;font-size:13px}
+.launch-alert{background:linear-gradient(135deg,#071f33,#0b4e5c);color:#fff;border-radius:28px;padding:30px;display:grid;grid-template-columns:1.05fr .95fr;gap:26px;align-items:center;box-shadow:0 20px 60px rgba(7,31,51,.12)}.launch-alert .eyebrow{color:#8ff0d6}.launch-alert h2{font-size:36px;margin:0 0 9px}.launch-alert p{color:#cfe0e5;line-height:1.6;margin:0}.launch-form{background:#fff;border-radius:20px;padding:20px;color:var(--ink)}.launch-form .field{margin-bottom:10px}.launch-form label{font-size:12px;font-weight:800}.launch-consent{display:flex;gap:8px;align-items:flex-start;font-size:11.5px;color:#657b89;line-height:1.4;margin:10px 0}.launch-consent input{margin-top:3px}.launch-form .btn{width:100%}.launch-note{font-size:11px;color:#81939d;line-height:1.45;margin-top:9px}
 .page-footer{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;padding:28px 0;color:#738792;font-size:12px;border-top:1px solid var(--line)}
-@media(max-width:860px){.hero-grid{grid-template-columns:1fr;padding:38px 28px}.trust-strip{grid-template-columns:1fr 1fr}.prize-grid,.steps{grid-template-columns:1fr 1fr}.rules-card{grid-template-columns:1fr}}
+@media(max-width:860px){.hero-grid{grid-template-columns:1fr;padding:38px 28px}.launch-alert{grid-template-columns:1fr}.trust-strip{grid-template-columns:1fr 1fr}.prize-grid,.steps{grid-template-columns:1fr 1fr}.rules-card{grid-template-columns:1fr}}
 @media(max-width:620px){.contest-shell{padding:0 14px 50px}.hero{border-radius:25px}.hero-grid{padding:30px 20px}.hero h1{font-size:48px}.prize-mini{grid-template-columns:1fr}.trust-strip,.prize-grid,.prize-small,.steps,.faq-grid{grid-template-columns:1fr}.section-head{align-items:start;flex-direction:column}.board-row{grid-template-columns:48px 1fr 92px;padding:15px 15px;font-size:13px}.leader-count{font-size:12px}.rules-card{padding:22px}.navlinks a:not(.keep){display:none}}
 </style>
 </head>
@@ -54,7 +55,7 @@ body{background:
       <p class="lead">Purchase BetweenPay, join the challenge, and refer verified new customers to climb the official leaderboard and compete for Top 10 cash prizes.</p>
       <div class="statusline"><span id="status" class="status-pill"><span class="status-dot"></span>COMING SOON</span><span id="dates" class="datecopy"></span></div>
       <div class="cta-row">
-        <a class="btn primary" href="checkout.html">Purchase BetweenPay to qualify</a>
+        <a id="contestPurchaseBtn" class="btn primary" href="checkout.html">Purchase BetweenPay + be ready</a>
         <a class="btn secondary" href="#leaderboard">View official leaderboard</a>
       </div>
       <div class="prize-mini"><div><small>1st place</small><b>$10,000</b></div><div><small>2nd place</small><b>$1,000</b></div><div><small>3rd place</small><b>$500</b></div></div>
@@ -74,6 +75,21 @@ body{background:
   <div class="trust-item"><span>$</span>Cash prizes for Top 10</div>
   <div class="trust-item"><span>◆</span>Fraud screening enabled</div>
 </div>
+
+<section class="section launch-alert" id="launch-alert">
+  <div>
+    <div class="eyebrow">GET THE OFFICIAL LIVE-NOW ALERT</div>
+    <h2>Know exactly when the 30-day clock starts.</h2>
+    <p>Join the pre-launch email list for the official launch alert, a plain-English rules reminder, and a short series explaining both BetweenPay and the $10,000 referral opportunity. The contest is not live yet, and referral credit does not start early.</p>
+  </div>
+  <div class="launch-form">
+    <div class="field"><label for="contestLeadEmail">Email</label><input id="contestLeadEmail" type="email" autocomplete="email" placeholder="you@example.com"></div>
+    <label class="launch-consent"><input id="contestLeadConsent" type="checkbox"><span>Email me the BetweenPay Referral Challenge launch alert, contest updates, and related BetweenPay product emails. I can unsubscribe anytime.</span></label>
+    <button id="contestLeadBtn" class="btn primary">Send me the LIVE-NOW alert</button>
+    <div id="contestLeadMsg" class="notice hidden" style="margin-top:10px"></div>
+    <div class="launch-note">No purchase is required to receive the alert. Contest participation requires an eligible active BetweenPay purchase and acceptance of the Official Rules. Void where prohibited.</div>
+  </div>
+</section>
 
 <section class="section" id="leaderboard">
   <div class="section-head">
@@ -143,6 +159,35 @@ body{background:
 const money=n=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(Number(n||0));
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
 bpTrack("contest_view");
+document.getElementById("contestPurchaseBtn")?.addEventListener("click",()=>bpTrack("contest_checkout_click",{placement:"contest_hero"}));
+document.getElementById("contestLeadBtn")?.addEventListener("click",async()=>{
+  const email=document.getElementById("contestLeadEmail").value.trim().toLowerCase();
+  const consent=document.getElementById("contestLeadConsent");
+  const btn=document.getElementById("contestLeadBtn");
+  const msg=document.getElementById("contestLeadMsg");
+  msg.classList.remove("hidden");
+  if(!email||!document.getElementById("contestLeadEmail").checkValidity()){msg.textContent="Enter a valid email address.";return}
+  if(!consent.checked){msg.textContent="Please check the consent box to receive the launch alert.";return}
+  btn.disabled=true;btn.textContent="Adding you…";
+  try{
+    const a=window.bpAttribution?window.bpAttribution():{};
+    const r=await fetch(BETWEENPAY_CONFIG.SUPABASE_URL+"/functions/v1/betweenpay-lead",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","apikey":BETWEENPAY_CONFIG.SUPABASE_PUBLISHABLE_KEY},
+      body:JSON.stringify({
+        email,intent:"contest",session_id:a.session_id||"",
+        source:a.source||"contest_page",medium:a.medium||"owned",
+        campaign:a.campaign||"contest_prelaunch",content:a.content||"launch_alert",
+        referrer:a.referrer||"",website:""
+      })
+    });
+    const j=await r.json();
+    if(!r.ok)throw new Error(j.error||"Could not add your email.");
+    msg.textContent=j.message||"You’re on the launch list.";
+    bpTrack("contest_lead_capture",{placement:"contest_page"});
+  }catch(e){msg.textContent=e.message||"Could not add your email."}
+  finally{btn.disabled=false;btn.textContent="Send me the LIVE-NOW alert"}
+});
 let timer=null;
 function startCountdown(end){
   if(timer)clearInterval(timer);
