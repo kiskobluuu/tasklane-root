@@ -95,6 +95,7 @@
             <div class="chips">
               <span class="chip"><span class="chip-dot"></span>No subscription</span>
               <span class="chip"><span class="chip-dot"></span>Instant access</span>
+              <span class="chip"><span class="chip-dot"></span>Debit & credit cards</span>
               <span class="chip"><span class="chip-dot"></span>Works across devices</span>
             </div>
           </div>
@@ -128,8 +129,8 @@
           <button id="continueBtn" class="btn primary paypal-cta">
             <span class="cta-icon">P</span>
             <span class="cta-copy">
-              <span class="cta-main">Continue to Secure PayPal Checkout</span>
-              <span class="cta-sub">Complete payment securely on PayPal</span>
+              <span class="cta-main">Continue to Secure Checkout</span>
+              <span class="cta-sub">Pay with PayPal or debit/credit card</span>
             </span>
           </button>
 
@@ -142,11 +143,11 @@
                 <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
               </svg>
             </span>
-            <span><strong>Secure checkout via PayPal.</strong> BetweenPay never receives your PayPal password or card details. After payment, you'll return automatically and receive account access by email.</span>
+            <span><strong>Pay with PayPal or a debit/credit card.</strong> PayPal securely processes the payment, and BetweenPay never receives your PayPal password or full card details. A PayPal account is not required when PayPal guest checkout is available for the buyer.</span>
           </div>
 
           <div class="payment-flow" aria-label="Checkout steps">
-            <div class="flow-step"><strong>1. Pay securely</strong><span>Complete checkout on PayPal</span></div>
+            <div class="flow-step"><strong>1. Choose how to pay</strong><span>PayPal or debit/credit card</span></div>
             <div class="flow-step"><strong>2. Access granted</strong><span>Your purchase is verified</span></div>
             <div class="flow-step"><strong>3. Sign in</strong><span>Open your secure email link</span></div>
           </div>
@@ -206,7 +207,7 @@
         if(!agree.checked) throw new Error("Please accept the purchase terms before continuing.");
         bpTrack("checkout_start");
         btn.disabled=true;
-        btn.innerHTML='<span class="cta-icon">P</span><span class="cta-copy"><span class="cta-main">Opening PayPal…</span><span class="cta-sub">Preparing your secure checkout</span></span>';
+        btn.innerHTML='<span class="cta-icon">P</span><span class="cta-copy"><span class="cta-main">Opening secure checkout…</span><span class="cta-sub">Preparing PayPal and card payment options</span></span>';
         msg.classList.add("hidden");
         const r=await fetch(cfg.SUPABASE_URL+"/functions/v1/create-paypal-order",{
           method:"POST",
