@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Sales & Fulfillment — BetweenPay</title>
+<link rel="stylesheet" href="commercial.css">
+<style>
+:root{--good:#087767;--warn:#986b00;--bad:#a12b38}
+body{background:#f3f7f9}.admin-shell{max-width:1450px;margin:0 auto;padding:20px 22px 70px}
+.admin-nav{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:18px}.admin-links{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.admin-links a{text-decoration:none;font-weight:800}
+.hero{background:linear-gradient(135deg,#071f33,#0c4c5c);color:#fff;border-radius:28px;padding:28px 30px;display:flex;justify-content:space-between;align-items:center;gap:25px;box-shadow:0 18px 50px rgba(7,31,51,.14)}.hero h1{font-size:clamp(32px,5vw,46px);margin:5px 0 8px;letter-spacing:-.04em}.hero p{margin:0;color:#cfe1e5}.hero-actions{display:flex;gap:9px;flex-wrap:wrap}.hero-actions .btn{background:#fff;color:#071f33}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}.stat{padding:17px 18px;border:1px solid #dbe7ec;border-radius:18px;background:#fff}.stat span{font-size:10px;color:#708692;font-weight:900;text-transform:uppercase;letter-spacing:.07em}.stat b{display:block;font-size:27px;margin-top:5px}.stat small{color:#81939d}
+.panel{background:#fff;border:1px solid #dbe7ec;border-radius:24px;padding:22px;margin-top:16px;box-shadow:0 12px 40px rgba(7,31,51,.045)}.panel-head{display:flex;justify-content:space-between;align-items:end;gap:18px;margin-bottom:15px}.panel h2{margin:0}.panel p{color:#708591;font-size:13px;margin:4px 0 0}.tools{display:flex;gap:8px;flex-wrap:wrap}
+.table-wrap{overflow:auto;border:1px solid #e0e9ed;border-radius:17px}.table{width:100%;min-width:1320px;border-collapse:collapse}.table th{position:sticky;top:0;background:#f5faf9;padding:11px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#687f8b;border-bottom:1px solid #dce7ec}.table td{padding:12px 10px;border-bottom:1px solid #edf2f4;font-size:12px;vertical-align:top}.table tr:last-child td{border-bottom:0}
+.pill{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:900;white-space:nowrap}.good{background:#e8f8f3;color:var(--good)}.warn{background:#fff6d9;color:var(--warn)}.bad{background:#fff0f1;color:var(--bad)}.neutral{background:#eef3f6;color:#59717e}.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;word-break:break-all}.mini{border:1px solid #d5e2e7;background:#fff;color:#24495a;border-radius:9px;padding:6px 8px;font-size:10px;font-weight:850;cursor:pointer}.mini:hover{background:#f1f7f7}.mini.goodbtn{color:#087767;border-color:#c9e6df}.empty{text-align:center;padding:34px;color:#718591}.error-text{max-width:260px;white-space:normal;color:#a12b38;font-size:11px;line-height:1.4}
+@media(max-width:1000px){.stats{grid-template-columns:1fr 1fr}.hero{align-items:flex-start;flex-direction:column}}
+@media(max-width:620px){.admin-shell{padding:14px}.stats{grid-template-columns:1fr 1fr}.stat{padding:14px}.stat b{font-size:21px}.panel{padding:15px}.admin-nav{align-items:flex-start}.admin-links{justify-content:flex-end}.hero{padding:22px}.panel-head{align-items:flex-start;flex-direction:column}.tools{width:100%}.tools .btn{flex:1}}
+</style>
+</head>
+<body>
+<div class="admin-shell">
+  <div class="admin-nav">
+    <a class="brand" href="./"><span class="mark">BP</span><span>Between<b>Pay</b></span></a>
+    <div class="admin-links"><a href="referral-admin.html">Referral admin</a><a href="./">BetweenPay home</a></div>
+  </div>
+  <div id="app"><div class="panel"><p>Checking owner access…</p></div></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+const sb=supabase.createClient(BETWEENPAY_CONFIG.SUPABASE_URL,BETWEENPAY_CONFIG.SUPABASE_PUBLISHABLE_KEY);
+const app=document.getElementById("app");let current=null;
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+const money=n=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(Number(n||0));
+const fmt=x=>x?new Date(x).toLocaleString():"—";
+function pill(text,type){return '<span class="pill '+type+'">'+esc(text)+'</span>'}
+function statusPill(x){
+ const t=String(x||"—"); if(/completed|active|sent/i.test(t))return pill(t,"good");if(/failed|revoked|reversed/i.test(t))return pill(t,"bad");if(/created|sending|pending/i.test(t))return pill(t,"warn");return pill(t,"neutral");
+}
+async function api(body){
+ const {data:{session}}=await sb.auth.getSession();
+ if(!session){app.innerHTML='<div class="panel"><h2>Owner sign-in required</h2><p>Use the Task Lane owner account to open the private sales dashboard.</p><a class="btn primary" href="login.html?next=sales-admin.html" style="margin-top:12px">Sign in</a></div>';return null}
+ const r=await fetch(BETWEENPAY_CONFIG.SUPABASE_URL+"/functions/v1/betweenpay-sales-admin",{method:body?"POST":"GET",headers:{"Content-Type":"application/json","apikey":BETWEENPAY_CONFIG.SUPABASE_PUBLISHABLE_KEY,"Authorization":"Bearer "+session.access_token},body:body?JSON.stringify(body):undefined});
+ const d=await r.json();if(!r.ok){app.innerHTML='<div class="panel"><h2>Could not open dashboard</h2><p>'+esc(d.error||"Admin request failed")+'</p></div>';return null}return d;
+}
+function exportCsv(){
+ if(!current)return;const cols=["paypal_order_id","email","amount","currency","status","created_at","completed_at","fulfillment_status","access_email_sent_at","entitlement_status","referral_code","fulfillment_error"];
+ const csv=[cols.join(",")].concat((current.rows||[]).map(r=>cols.map(k=>'"'+String(r[k]??"").replaceAll('"','""')+'"').join(","))).join("\n");
+ const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="BetweenPay-sales-"+new Date().toISOString().slice(0,10)+".csv";a.click();URL.revokeObjectURL(a.href);
+}
+async function retry(id,btn){
+ if(!confirm("Send a fresh BetweenPay access email for this completed purchase?"))return;
+ btn.disabled=true;btn.textContent="Sending…";
+ const d=await api({action:"retry_access_email",order_id:id});
+ if(d){alert("Access email sent.");await load()}
+ else{btn.disabled=false;btn.textContent="Retry email"}
+}
+function render(d){
+ current=d;const s=d.stats||{},rows=d.rows||[];
+ app.innerHTML='<section class="hero"><div><div class="kicker" style="color:#8ff0d6">PRIVATE OPERATIONS</div><h1>Sales & Fulfillment</h1><p>Monitor purchases, access delivery and customer entitlement status in one place.</p></div><div class="hero-actions"><button class="btn" id="refresh">Refresh</button><button class="btn" id="export">Export CSV</button></div></section>'+
+ '<div class="stats">'+
+ '<div class="stat"><span>Completed sales</span><b>'+Number(s.completed_sales||0)+'</b><small>Captured payments</small></div>'+
+ '<div class="stat"><span>Gross revenue</span><b>'+money(s.gross_revenue)+'</b><small>Completed USD sales</small></div>'+
+ '<div class="stat"><span>Access emails sent</span><b>'+Number(s.access_emails_sent||0)+'</b><small>Automatic fulfillment</small></div>'+
+ '<div class="stat"><span>Fulfillment failures</span><b style="color:'+(Number(s.fulfillment_failed||0)?"#a12b38":"inherit")+'">'+Number(s.fulfillment_failed||0)+'</b><small>'+Number(s.fulfillment_pending||0)+' pending</small></div>'+
+ '<div class="stat"><span>Active access</span><b>'+Number(s.active_access||0)+'</b><small>Current active entitlements</small></div>'+
+ '<div class="stat"><span>Revoked access</span><b>'+Number(s.revoked_access||0)+'</b><small>Refunded / reversed access</small></div>'+
+ '<div class="stat"><span>Open checkout orders</span><b>'+Number(s.open_checkout_orders||0)+'</b><small>Started but not completed</small></div>'+
+ '<div class="stat"><span>Health</span><b style="font-size:18px">'+(Number(s.fulfillment_failed||0)?"Needs attention":"All clear")+'</b><small>Fulfillment monitoring</small></div>'+
+ '</div>'+
+ '<section class="panel"><div class="panel-head"><div><h2>Recent purchase orders</h2><p>Newest 150 PayPal order records, including automated access-email delivery.</p></div><div class="tools">'+statusPill(rows.length+" records")+'</div></div>'+
+ (rows.length?'<div class="table-wrap"><table class="table"><thead><tr><th>Customer</th><th>Amount</th><th>Payment</th><th>Entitlement</th><th>Fulfillment</th><th>Access email</th><th>Created</th><th>Completed</th><th>Order ID</th><th>Referral</th><th>Error / action</th></tr></thead><tbody>'+
+ rows.map(r=>'<tr><td><strong>'+esc(r.email)+'</strong></td><td>'+money(r.amount)+' '+esc(r.currency||"")+'</td><td>'+statusPill(r.status)+'</td><td>'+statusPill(r.entitlement_status||"—")+'</td><td>'+statusPill(r.fulfillment_status||((r.status==="completed")?"pending":"—"))+'</td><td>'+(r.access_email_sent_at?'<strong>'+fmt(r.access_email_sent_at)+'</strong>':'—')+'</td><td>'+fmt(r.created_at)+'</td><td>'+fmt(r.completed_at)+'</td><td><span class="code">'+esc(r.paypal_order_id)+'</span></td><td>'+esc(r.referral_code||"—")+'</td><td>'+(r.fulfillment_error?'<div class="error-text">'+esc(r.fulfillment_error)+'</div>':'')+(r.status==="completed"?'<button class="mini goodbtn" data-retry="'+esc(r.paypal_order_id)+'" style="margin-top:6px">Retry access email</button>':'')+'</td></tr>').join("")+
+ '</tbody></table></div>':'<div class="empty">No purchase orders yet.</div>')+'</section>';
+ document.getElementById("refresh").onclick=load;document.getElementById("export").onclick=exportCsv;
+ document.querySelectorAll("[data-retry]").forEach(b=>b.onclick=()=>retry(b.dataset.retry,b));
+}
+async function load(){const d=await api();if(d)render(d)}
+load();
+</script>
+</body></html>
