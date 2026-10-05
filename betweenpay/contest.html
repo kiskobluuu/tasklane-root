@@ -1,8 +1,192 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="index,follow"><title>$10,000 BetweenPay Referral Challenge</title><meta name="description" content="Purchase BetweenPay, join the referral challenge, and compete for cash prizes including a $10,000 first-place prize."><link rel="stylesheet" href="commercial.css"><style>.hero{text-align:center;padding:60px 0 35px}.hero h1{font-size:clamp(42px,7vw,72px);margin:10px 0}.grand{font-size:clamp(58px,10vw,100px);font-weight:950;color:#0e9f8f;letter-spacing:-.06em}.prizes,.board{max-width:820px;margin:28px auto}.row{display:grid;grid-template-columns:80px 1fr 130px;gap:12px;padding:14px;border-bottom:1px solid #dde8ed;align-items:center}.row.top{font-weight:900}.muted{color:#64748b}.status{display:inline-block;padding:7px 11px;border-radius:99px;background:#eaf8f4;color:#087767;font-weight:800;font-size:12px}.countdown{font-size:18px;font-weight:900;margin:8px 0 18px}.cta-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}@media(max-width:650px){.row{grid-template-columns:55px 1fr 85px}}</style></head><body><div class="wrap"><nav class="nav"><a class="brand" href="./"><span class="mark">BP</span><span>Between<b>Pay</b></span></a><div class="navlinks"><a href="referrals.html">My referrals</a><a class="btn primary" href="checkout.html">Get BetweenPay</a></div></nav><section class="hero"><div class="kicker">30-DAY REFERRAL CHALLENGE</div><div class="grand">$10,000</div><h1>First-place cash prize.</h1><p class="lead">Purchase BetweenPay, join the challenge, and refer the most verified new BetweenPay customers during the contest period.</p><p><span id="status" class="status">Contest setup in progress</span></p><p id="dates" class="muted"></p><div id="countdown" class="countdown"></div><div class="cta-row"><a class="btn primary" href="checkout.html">Purchase BetweenPay to qualify</a><a class="btn" href="referrals.html">Already purchased? Join the challenge</a></div></section>
-<section class="prizes"><div class="section-head"><h2>Cash prizes — Top 10</h2><p><strong>$12,050 total cash prize pool.</strong> Only verified, eligible purchases count toward rankings.</p></div><div id="prizes" class="card"></div></section>
-<section class="board"><div class="section-head"><h2>Official leaderboard</h2><p>Ranked by qualified referred purchases. Ties are broken by who reached the tied referral total first. Demo/testing accounts never appear in official standings.</p></div><div id="board" class="card"><p class="muted">Loading leaderboard…</p></div></section>
-<section class="card" style="max-width:820px;margin:30px auto"><h2>How it works</h2><p><strong>1.</strong> Purchase BetweenPay yourself and sign in.</p><p><strong>2.</strong> Join the referral challenge, accept the Official Rules, and receive your unique referral link.</p><p><strong>3.</strong> Share your link. A referral counts only after a new customer successfully purchases BetweenPay during the live contest period.</p><p><strong>4.</strong> Refunded, reversed, duplicate, self-referred or otherwise disqualified purchases do not count.</p><p><a href="contest-rules.html"><strong>Read the Official Contest Rules →</strong></a></p></section></div><script src="config.js"></script><script src="tracker.js"></script><script>
-const money=n=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n);bpTrack("contest_view");
-let timer=null;function startCountdown(end){if(timer)clearInterval(timer);const el=document.getElementById("countdown");const tick=()=>{const ms=new Date(end).getTime()-Date.now();if(ms<=0){el.textContent="Contest period ended.";clearInterval(timer);return}const d=Math.floor(ms/86400000),h=Math.floor(ms%86400000/3600000),m=Math.floor(ms%3600000/60000),s=Math.floor(ms%60000/1000);el.textContent=d+"d "+h+"h "+m+"m "+s+"s remaining"};tick();timer=setInterval(tick,1000)}
-fetch(BETWEENPAY_CONFIG.SUPABASE_URL+"/functions/v1/betweenpay-leaderboard",{cache:"no-store"}).then(r=>r.json()).then(d=>{const c=d.contest||{};document.getElementById("status").textContent=c.status==="live"?"LIVE NOW":c.status==="closed"?"CONTEST CLOSED":"COMING SOON";if(c.starts_at&&c.ends_at){document.getElementById("dates").textContent=new Date(c.starts_at).toLocaleString()+" — "+new Date(c.ends_at).toLocaleString();if(c.status==="live")startCountdown(c.ends_at)}else document.getElementById("countdown").textContent="The official 30-day clock has not started yet.";document.getElementById("prizes").innerHTML=(d.prizes||[]).map(x=>`<div class="row top"><span>#${x.place}</span><span>${x.place===1?"Grand Prize":"Cash Prize"}</span><span>${money(x.amount)}</span></div>`).join("");document.getElementById("board").innerHTML=d.leaderboard?.length?d.leaderboard.map(x=>`<div class="row ${x.rank<=10?"top":""}"><span>#${x.rank}</span><span>${String(x.display_name).replace(/[<>&]/g,"")}</span><span>${x.referrals} referrals</span></div>`).join(""):'<p class="muted">'+(c.status==="draft"?"Official rankings will appear when the contest goes live.":"No qualified referrals have been recorded yet.")+'</p>'}).catch(()=>document.getElementById("board").innerHTML='<p>Leaderboard temporarily unavailable.</p>');
-</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow">
+<title>$10,000 BetweenPay Referral Challenge</title>
+<meta name="description" content="Purchase BetweenPay, join the 30-Day Referral Challenge, and compete for cash prizes including a $10,000 first-place prize.">
+<link rel="stylesheet" href="commercial.css">
+<style>
+:root{--ink:#071f33;--ink2:#0b3248;--teal:#17a79a;--mint:#83ead0;--soft:#eef8f6;--gold:#f2c864;--line:#dce7ec;--muted:#657b89}
+body{background:
+ radial-gradient(circle at 82% 8%,rgba(23,167,154,.12),transparent 30%),
+ radial-gradient(circle at 10% 32%,rgba(7,31,51,.06),transparent 26%),
+ linear-gradient(180deg,#f6fbfb 0,#f7f9fc 65%,#fff 100%)}
+.contest-shell{max-width:1180px;margin:auto;padding:0 22px 70px}
+.hero{position:relative;overflow:hidden;margin:18px 0 20px;border-radius:34px;background:linear-gradient(135deg,#071f33 0%,#0b4054 54%,#118a83 100%);color:#fff;box-shadow:0 30px 90px rgba(7,31,51,.19)}
+.hero:after{content:"";position:absolute;width:460px;height:460px;border:1px solid rgba(255,255,255,.11);border-radius:50%;right:-130px;bottom:-250px}
+.hero-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:30px;padding:58px}
+.hero .kicker{color:#8ff0db}.hero h1{font-size:clamp(44px,7vw,78px);line-height:.98;letter-spacing:-.055em;margin:13px 0 18px;max-width:720px}
+.hero .lead{color:#dbe9ed;font-size:19px;max-width:680px}.hero strong{color:#fff}
+.statusline{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:22px 0 0}.status-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(131,234,208,.14);border:1px solid rgba(131,234,208,.28);color:#a4f5df;font-size:12px;font-weight:900;letter-spacing:.08em}.status-dot{width:8px;height:8px;border-radius:50%;background:#83ead0;box-shadow:0 0 0 5px rgba(131,234,208,.1)}
+.countdown-card{align-self:center;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.16);border-radius:26px;padding:27px;backdrop-filter:blur(10px)}
+.countdown-label{font-size:11px;letter-spacing:.14em;font-weight:900;color:#aeeadd}.countdown{font-size:28px;line-height:1.2;font-weight:950;margin:10px 0 6px}.datecopy{color:#d8e6ea;font-size:13px;line-height:1.55}
+.cta-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}.hero .btn.primary{background:#fff;color:var(--ink)}.hero .btn.secondary{border:1px solid rgba(255,255,255,.28);color:#fff;background:rgba(255,255,255,.06)}
+.prize-mini{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-top:18px}.prize-mini div{padding:13px;border-radius:16px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.10)}.prize-mini small{display:block;color:#b9d2d8;font-size:10px;text-transform:uppercase;letter-spacing:.08em}.prize-mini b{font-size:20px}
+.trust-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:20px;overflow:hidden;margin:18px 0 34px}.trust-item{background:#fff;padding:16px 14px;text-align:center;font-size:12px;font-weight:850;color:#486373}.trust-item span{display:block;color:#0b8b7e;font-size:18px;margin-bottom:4px}
+.section{margin:46px 0}.section-head{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:18px}.section-head h2{font-size:clamp(28px,4vw,42px);margin:0;letter-spacing:-.035em}.section-head p{margin:0;max-width:600px;color:var(--muted);line-height:1.6}.eyebrow{font-size:11px;letter-spacing:.15em;font-weight:950;color:#0c9185;margin-bottom:7px}
+.board-shell{background:#fff;border:1px solid var(--line);border-radius:28px;box-shadow:0 18px 60px rgba(7,31,51,.07);overflow:hidden}
+.board-top{display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fbfefe,#f6fbfb)}.live-chip{padding:7px 10px;border-radius:999px;background:#eaf8f4;color:#087767;font-size:11px;font-weight:900}
+.board-row{display:grid;grid-template-columns:72px 1fr 170px;gap:12px;padding:17px 24px;border-bottom:1px solid #e8eff2;align-items:center}.board-row:last-child{border-bottom:0}.rank{font-weight:950;color:#0b8d81}.leader-name{font-weight:850}.leader-count{text-align:right;font-weight:900}.empty-board{text-align:center;padding:48px 22px}.empty-icon{width:54px;height:54px;border-radius:18px;background:#eaf8f4;color:#087767;display:grid;place-items:center;margin:0 auto 14px;font-size:24px}
+.prize-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}.prize-card{background:#fff;border:1px solid var(--line);border-radius:24px;padding:22px;box-shadow:0 16px 45px rgba(7,31,51,.055);position:relative;overflow:hidden}.prize-card.featured{background:linear-gradient(145deg,#08243a,#0d655f);color:#fff;border:0}.prize-card.featured p{color:#cce3e6}.place{font-size:11px;letter-spacing:.13em;font-weight:950;text-transform:uppercase;color:#0a8d80}.featured .place{color:#8cf0d8}.prize-amount{font-size:38px;font-weight:950;letter-spacing:-.04em;margin:9px 0}.prize-card p{color:var(--muted);margin:0}.prize-small{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:15px}.prize-small .prize-card{padding:18px}.prize-small .prize-amount{font-size:28px}.remaining-prizes{margin-top:15px;background:#fff;border:1px solid var(--line);border-radius:22px;padding:8px 20px}.prize-line{display:grid;grid-template-columns:80px 1fr 120px;padding:13px 4px;border-bottom:1px solid #edf2f4}.prize-line:last-child{border-bottom:0}.prize-line b:last-child{text-align:right}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.step{background:#fff;border:1px solid var(--line);border-radius:22px;padding:22px}.step-num{width:34px;height:34px;border-radius:11px;background:#eaf8f4;color:#087767;display:grid;place-items:center;font-weight:950;margin-bottom:14px}.step h3{margin:0 0 7px}.step p{margin:0;color:var(--muted);line-height:1.55;font-size:14px}
+.faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.faq{background:#fff;border:1px solid var(--line);border-radius:18px;padding:0 19px}.faq summary{cursor:pointer;padding:18px 0;font-weight:850}.faq p{color:var(--muted);line-height:1.6;margin:0 0 18px}
+.rules-card{display:grid;grid-template-columns:1.2fr .8fr;gap:26px;background:linear-gradient(145deg,#f2fbf9,#fff);border:1px solid #d5ebe7;border-radius:28px;padding:30px}.rules-card h2{font-size:36px;margin:0 0 10px}.rule-points{display:grid;gap:9px}.rule-point{display:flex;gap:10px;color:#4c6877}.check{color:#0b9285;font-weight:950}
+.rules-cta{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;background:#fff;border:1px solid var(--line);border-radius:20px;padding:22px}.rules-cta strong{font-size:20px;margin-bottom:6px}.rules-cta p{color:var(--muted);line-height:1.5;font-size:13px}
+.page-footer{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;padding:28px 0;color:#738792;font-size:12px;border-top:1px solid var(--line)}
+@media(max-width:860px){.hero-grid{grid-template-columns:1fr;padding:38px 28px}.trust-strip{grid-template-columns:1fr 1fr}.prize-grid,.steps{grid-template-columns:1fr 1fr}.rules-card{grid-template-columns:1fr}}
+@media(max-width:620px){.contest-shell{padding:0 14px 50px}.hero{border-radius:25px}.hero-grid{padding:30px 20px}.hero h1{font-size:48px}.prize-mini{grid-template-columns:1fr}.trust-strip,.prize-grid,.prize-small,.steps,.faq-grid{grid-template-columns:1fr}.section-head{align-items:start;flex-direction:column}.board-row{grid-template-columns:48px 1fr 92px;padding:15px 15px;font-size:13px}.leader-count{font-size:12px}.rules-card{padding:22px}.navlinks a:not(.keep){display:none}}
+</style>
+</head>
+<body>
+<div class="contest-shell">
+<nav class="nav">
+  <a class="brand" href="./"><span class="mark">BP</span><span>Between<b>Pay</b></span></a>
+  <div class="navlinks"><a href="referrals.html">My referrals</a><a class="btn primary keep" href="checkout.html">Get BetweenPay</a></div>
+</nav>
+
+<section class="hero">
+  <div class="hero-grid">
+    <div>
+      <div class="kicker">OFFICIAL 30-DAY REFERRAL CHALLENGE</div>
+      <h1>Win up to <strong>$10,000 cash.</strong></h1>
+      <p class="lead">Purchase BetweenPay, join the challenge, and refer verified new customers to climb the official leaderboard and compete for Top 10 cash prizes.</p>
+      <div class="statusline"><span id="status" class="status-pill"><span class="status-dot"></span>COMING SOON</span><span id="dates" class="datecopy"></span></div>
+      <div class="cta-row">
+        <a class="btn primary" href="checkout.html">Purchase BetweenPay to qualify</a>
+        <a class="btn secondary" href="#leaderboard">View official leaderboard</a>
+      </div>
+      <div class="prize-mini"><div><small>1st place</small><b>$10,000</b></div><div><small>2nd place</small><b>$1,000</b></div><div><small>3rd place</small><b>$500</b></div></div>
+    </div>
+    <aside class="countdown-card">
+      <div class="countdown-label">OFFICIAL CONTEST CLOCK</div>
+      <div id="countdown" class="countdown">The 30-day clock has not started.</div>
+      <div class="datecopy">The challenge begins only when this page shows <strong>LIVE NOW</strong> with a published start and end time.</div>
+    </aside>
+  </div>
+</section>
+
+<div class="trust-strip">
+  <div class="trust-item"><span>✓</span>Verified purchases only</div>
+  <div class="trust-item"><span>↗</span>Live official leaderboard</div>
+  <div class="trust-item"><span>§</span>Official rules apply</div>
+  <div class="trust-item"><span>$</span>Cash prizes for Top 10</div>
+  <div class="trust-item"><span>◆</span>Fraud screening enabled</div>
+</div>
+
+<section class="section" id="leaderboard">
+  <div class="section-head">
+    <div><div class="eyebrow">OFFICIAL STANDINGS</div><h2>Live leaderboard</h2></div>
+    <p>Ranked by qualified referred purchases. If participants tie, the person who reached the tied referral total first ranks higher.</p>
+  </div>
+  <div class="board-shell">
+    <div class="board-top"><strong>Top performers</strong><span id="boardStatus" class="live-chip">COMING SOON</span></div>
+    <div id="board"><div class="empty-board"><div class="empty-icon">↗</div><strong>Loading official standings…</strong></div></div>
+    <div class="board-top"><span class="fine">Only verified, eligible purchases count.</span><span id="updated" class="fine"></span></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div><div class="eyebrow">$12,050 TOTAL PRIZE POOL</div><h2>Top 10 cash prizes</h2></div>
+    <p>The highest verified referral totals at the end of the published contest period determine the prize placements, subject to final eligibility verification.</p>
+  </div>
+  <div id="prizeShowcase" class="prize-grid"></div>
+  <div id="prizeSmall" class="prize-small"></div>
+  <div id="remainingPrizes" class="remaining-prizes"></div>
+</section>
+
+<section class="section">
+  <div class="section-head"><div><div class="eyebrow">HOW IT WORKS</div><h2>From purchase to leaderboard</h2></div><p>Every step is tied to a verified BetweenPay customer account and a unique referral link.</p></div>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><h3>Buy BetweenPay</h3><p>Complete your own valid BetweenPay purchase and activate customer access.</p></div>
+    <div class="step"><div class="step-num">2</div><h3>Join the challenge</h3><p>Use the purchase email, choose a leaderboard display name, and accept the Official Rules.</p></div>
+    <div class="step"><div class="step-num">3</div><h3>Get your link</h3><p>Your referral dashboard provides a unique link attached to your contest entry.</p></div>
+    <div class="step"><div class="step-num">4</div><h3>Refer new customers</h3><p>Share your link with people who have not previously purchased BetweenPay.</p></div>
+    <div class="step"><div class="step-num">5</div><h3>Earn qualified referrals</h3><p>A referral counts after a valid referred purchase is completed and passes qualification checks.</p></div>
+    <div class="step"><div class="step-num">6</div><h3>Climb the leaderboard</h3><p>Build the highest verified referral total during the official 30-day contest period.</p></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head"><div><div class="eyebrow">QUICK ANSWERS</div><h2>Frequently asked questions</h2></div></div>
+  <div class="faq-grid">
+    <details class="faq"><summary>Who can enter?</summary><p>Eligible BetweenPay customers who are at least 18, have a valid active purchase, accept the Official Rules, and may legally participate where they live.</p></details>
+    <details class="faq"><summary>What counts as a qualified referral?</summary><p>A new customer attributed to your unique referral link who completes a valid BetweenPay purchase during the live contest period and passes verification.</p></details>
+    <details class="faq"><summary>When does the contest begin?</summary><p>Only when this official page displays LIVE NOW with published start and end timestamps. The live period lasts 30 days.</p></details>
+    <details class="faq"><summary>How are ties handled?</summary><p>If participants finish with the same qualified-referral total, the participant who reached that tied total first ranks higher.</p></details>
+    <details class="faq"><summary>Do refunds still count?</summary><p>No. Refunded, reversed, charged-back, duplicate, self-referred, fraudulent, or otherwise invalid transactions do not qualify and may be removed from standings.</p></details>
+    <details class="faq"><summary>When are winners paid?</summary><p>Final standings are verified after the contest closes. Potential winners must complete any reasonable eligibility and payment verification required before prizes are released.</p></details>
+  </div>
+</section>
+
+<section class="section rules-card">
+  <div>
+    <div class="eyebrow">OFFICIAL RULES & ELIGIBILITY</div>
+    <h2>Clear rules. Verified results.</h2>
+    <div class="rule-points">
+      <div class="rule-point"><span class="check">✓</span><span>Participants must have a valid active BetweenPay purchase and accept the Official Rules.</span></div>
+      <div class="rule-point"><span class="check">✓</span><span>Only new, verified referred customers during the published contest period can qualify.</span></div>
+      <div class="rule-point"><span class="check">✓</span><span>Refunds, reversals, self-referrals, duplicates and manipulated transactions are excluded.</span></div>
+      <div class="rule-point"><span class="check">✓</span><span>Final standings and prizes remain subject to winner verification and applicable law.</span></div>
+    </div>
+  </div>
+  <div class="rules-cta"><strong>Read before you compete.</strong><p>The full rules govern eligibility, rankings, verification, prizes and disqualification.</p><a class="btn primary" href="contest-rules.html">Read Full Official Rules</a></div>
+</section>
+
+<footer class="page-footer"><span>© 2026 BetweenPay / Task Lane</span><span><a href="contest-rules.html">Official Rules</a> · <a href="terms.html">Terms</a> · <a href="privacy.html">Privacy</a></span></footer>
+</div>
+<script src="config.js"></script>
+<script src="tracker.js"></script>
+<script>
+const money=n=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(Number(n||0));
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+bpTrack("contest_view");
+let timer=null;
+function startCountdown(end){
+  if(timer)clearInterval(timer);
+  const el=document.getElementById("countdown");
+  const tick=()=>{
+    const ms=new Date(end).getTime()-Date.now();
+    if(ms<=0){el.textContent="Contest period ended.";clearInterval(timer);return}
+    const d=Math.floor(ms/86400000),h=Math.floor(ms%86400000/3600000),m=Math.floor(ms%3600000/60000),s=Math.floor(ms%60000/1000);
+    el.textContent=d+"d "+h+"h "+m+"m "+s+"s remaining";
+  };
+  tick();timer=setInterval(tick,1000);
+}
+function renderPrizes(prizes){
+  const sorted=(prizes||[]).slice().sort((a,b)=>a.place-b.place);
+  const top3=sorted.slice(0,3),next2=sorted.slice(3,5),rest=sorted.slice(5);
+  document.getElementById("prizeShowcase").innerHTML=top3.map((x,i)=>
+    '<div class="prize-card '+(i===0?'featured':'')+'"><div class="place">#'+x.place+' · '+(x.place===1?'Grand Prize':'Cash Prize')+'</div><div class="prize-amount">'+money(x.amount)+'</div><p>'+(x.place===1?'The top verified referrer wins the headline cash prize.':'Awarded to the #'+x.place+' verified finisher.')+'</p></div>'
+  ).join("");
+  document.getElementById("prizeSmall").innerHTML=next2.map(x=>
+    '<div class="prize-card"><div class="place">#'+x.place+' · Cash Prize</div><div class="prize-amount">'+money(x.amount)+'</div><p>Verified final placement required.</p></div>'
+  ).join("");
+  document.getElementById("remainingPrizes").innerHTML=rest.map(x=>
+    '<div class="prize-line"><b>#'+x.place+'</b><span>Cash prize</span><b>'+money(x.amount)+'</b></div>'
+  ).join("");
+}
+fetch(BETWEENPAY_CONFIG.SUPABASE_URL+"/functions/v1/betweenpay-leaderboard",{cache:"no-store"})
+.then(r=>r.json()).then(d=>{
+  const c=d.contest||{};
+  const status=c.status==="live"?"LIVE NOW":c.status==="closed"?"CONTEST CLOSED":"COMING SOON";
+  document.getElementById("status").innerHTML='<span class="status-dot"></span>'+status;
+  document.getElementById("boardStatus").textContent=status;
+  if(c.starts_at&&c.ends_at){
+    document.getElementById("dates").textContent=new Date(c.starts_at).toLocaleString()+" — "+new Date(c.ends_at).toLocaleString();
+    if(c.status==="live")startCountdown(c.ends_at); else if(c.status==="closed")document.getElementById("countdown").textContent="The official contest period has ended.";
+  }else document.getElementById("countdown").textContent="The official 30-day clock has not started yet.";
+  renderPrizes(d.prizes||[]);
+  const rows=d.leaderboard||[];
+  document.getElementById("board").innerHTML=rows.length?rows.slice(0,10).map(x=>
+    '<div class="board-row"><span class="rank">#'+x.rank+'</span><span class="leader-name">'+esc(x.display_name)+'</span><span class="leader-count">'+x.referrals+' qualified</span></div>'
+  ).join(""):'<div class="empty-board"><div class="empty-icon">↗</div><strong>'+(c.status==="draft"?'The official leaderboard opens when the contest goes live.':'No qualified referrals have been recorded yet.')+'</strong><p class="muted">Be one of the first participants to claim a place in the standings.</p></div>';
+  document.getElementById("updated").textContent="Updated "+new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
+}).catch(()=>{
+  document.getElementById("board").innerHTML='<div class="empty-board"><strong>Leaderboard temporarily unavailable.</strong><p class="muted">Please check again shortly.</p></div>';
+});
+</script>
+</body>
+</html>
