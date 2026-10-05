@@ -40,13 +40,14 @@ function show(t,e=false){msg.textContent=t;msg.classList.remove("hidden");msg.st
 btn.onclick=async()=>{
   const address=email.value.trim().toLowerCase();
   if(!address||!email.checkValidity()){show("Enter a valid admin email address.",true);return}
+  if(address!=="betweenpay@gmail.com"){show("That email is not authorized for BetweenPay Admin.",true);return}
   btn.disabled=true;btn.textContent="Sending secure link…";msg.classList.add("hidden");
   try{
     await sb.auth.signOut({scope:"local"});
     const redirect=new URL(next,location.href).href;
-    const {error}=await sb.auth.signInWithOtp({email:address,options:{emailRedirectTo:redirect,shouldCreateUser:false}});
+    const {error}=await sb.auth.signInWithOtp({email:address,options:{emailRedirectTo:redirect,shouldCreateUser:true}});
     if(error)throw error;
-    show("Check your email for the secure BetweenPay Admin sign-in link. This link only works for an existing authorized account.");
+    show("Check the authorized admin inbox for the secure BetweenPay Admin sign-in link.");
   }catch(e){show(e.message||"Could not send the admin sign-in link.",true)}
   finally{btn.disabled=false;btn.textContent="Email me an admin sign-in link"}
 };
