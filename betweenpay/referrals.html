@@ -2,7 +2,7 @@
 const sb=supabase.createClient(BETWEENPAY_CONFIG.SUPABASE_URL,BETWEENPAY_CONFIG.SUPABASE_PUBLISHABLE_KEY),box=document.getElementById("box");
 function esc(s=""){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}
 async function call(method="GET",body){const {data:{session}}=await sb.auth.getSession();if(!session){box.innerHTML='<p>Please <a href="login.html">sign in to BetweenPay</a> first.</p>';return}const res=await fetch(BETWEENPAY_CONFIG.SUPABASE_URL+"/functions/v1/betweenpay-referral-account",{method,headers:{"Content-Type":"application/json","apikey":BETWEENPAY_CONFIG.SUPABASE_PUBLISHABLE_KEY,"Authorization":"Bearer "+session.access_token},body:body?JSON.stringify(body):undefined});const d=await res.json();if(!res.ok){box.innerHTML='<p class="notice">'+esc(d.error||"Could not load referral account.")+'</p>';return}render(d)}
-function rulesBlock(){return '<label class="rulesbox"><input id="acceptRules" type="checkbox"><span><strong>I confirm I am 18+ and legally eligible to participate where I live, and I agree to the <a href="contest-rules.html" target="_blank">Official Contest Rules</a>.</strong><br><span class="fine">The challenge starts only when the official contest page shows LIVE NOW.</span></span></label>'}
+function rulesBlock(){return '<label class="rulesbox"><input id="acceptRules" type="checkbox"><span><strong>I confirm I am 18+ and legally eligible to participate where I live, and I agree to the <a href="contest-rules.html" target="_blank">Official Contest Rules</a>.</strong><br><span class="fine">The challenge is LIVE NOW. Only qualifying referrals completed during the published live contest period can count.</span></span></label>'}
 function render(d){
  const status=d.contest?.status==="live"?"LIVE NOW":d.contest?.status==="closed"?"CLOSED":"COMING SOON";
  const statusHtml='<p><span class="status-pill">'+status+'</span></p>';
@@ -12,7 +12,7 @@ function render(d){
    return;
  }
  if(!d.rules_accepted){
-   box.innerHTML=statusHtml+'<p>Your referral entry was created during testing. Accept the current Official Contest Rules to activate it before launch.</p>'+rulesBlock()+'<button class="btn primary" id="activate">Accept rules & activate entry</button>';
+   box.innerHTML=statusHtml+'<p>Your referral entry was created during testing. Accept the current Official Contest Rules to activate it for the live challenge.</p>'+rulesBlock()+'<button class="btn primary" id="activate">Accept rules & activate entry</button>';
    document.getElementById("activate").onclick=async()=>{if(!document.getElementById("acceptRules").checked){alert("Accept the Official Contest Rules to continue.");return}await call("POST",{accept_rules:true});bpTrack("referral_join",{existing_entry:true});};
    return;
  }
