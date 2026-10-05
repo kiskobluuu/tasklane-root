@@ -78,16 +78,16 @@ body{background:
 
 <section class="section launch-alert" id="launch-alert">
   <div>
-    <div class="eyebrow">GET THE OFFICIAL LIVE-NOW ALERT</div>
-    <h2>Know exactly when the 30-day clock starts.</h2>
-    <p>Join the pre-launch email list for the official launch alert, a plain-English rules reminder, and a short series explaining both BetweenPay and the $10,000 referral opportunity. The contest is not live yet, and referral credit does not start early.</p>
+    <div class="eyebrow">GET OFFICIAL CONTEST UPDATES</div>
+    <h2>The 30-day clock is running now.</h2>
+    <p>Join the contest update list for the live countdown, plain-English rules reminders, and a short series explaining both BetweenPay and the $10,000 referral opportunity while the official 30-day challenge is active.</p>
   </div>
   <div class="launch-form">
     <div class="field"><label for="contestLeadEmail">Email</label><input id="contestLeadEmail" type="email" autocomplete="email" placeholder="you@example.com"></div>
-    <label class="launch-consent"><input id="contestLeadConsent" type="checkbox"><span>Email me the BetweenPay Referral Challenge launch alert, contest updates, and related BetweenPay product emails. I can unsubscribe anytime.</span></label>
-    <button id="contestLeadBtn" class="btn primary">Send me the LIVE-NOW alert</button>
+    <label class="launch-consent"><input id="contestLeadConsent" type="checkbox"><span>Email me BetweenPay Referral Challenge updates, countdown reminders, and related BetweenPay product emails. I can unsubscribe anytime.</span></label>
+    <button id="contestLeadBtn" class="btn primary">Send me contest updates</button>
     <div id="contestLeadMsg" class="notice hidden" style="margin-top:10px"></div>
-    <div class="launch-note">No purchase is required to receive the alert. Contest participation requires an eligible active BetweenPay purchase and acceptance of the Official Rules. Void where prohibited.</div>
+    <div class="launch-note">No purchase is required to receive email updates. Contest participation requires an eligible active BetweenPay purchase and acceptance of the Official Rules. Void where prohibited.</div>
   </div>
 </section>
 
@@ -177,16 +177,16 @@ document.getElementById("contestLeadBtn")?.addEventListener("click",async()=>{
       body:JSON.stringify({
         email,intent:"contest",session_id:a.session_id||"",
         source:a.source||"contest_page",medium:a.medium||"owned",
-        campaign:a.campaign||"contest_prelaunch",content:a.content||"launch_alert",
+        campaign:a.campaign||"contest_live",content:a.content||"contest_updates",
         referrer:a.referrer||"",website:""
       })
     });
     const j=await r.json();
     if(!r.ok)throw new Error(j.error||"Could not add your email.");
-    msg.textContent=j.message||"You’re on the launch list.";
+    msg.textContent=j.message||"You’re on the contest update list.";
     bpTrack("contest_lead_capture",{placement:"contest_page"});
   }catch(e){msg.textContent=e.message||"Could not add your email."}
-  finally{btn.disabled=false;btn.textContent="Send me the LIVE-NOW alert"}
+  finally{btn.disabled=false;btn.textContent="Send me contest updates"}
 });
 let timer=null;
 function startCountdown(end){
