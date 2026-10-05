@@ -215,6 +215,15 @@
           body:JSON.stringify({email:accessEmail,referral_code:refCode})
         });
         const j=await r.json();
+        if(j.code==="ALREADY_OWNS"){
+          msg.classList.remove("hidden");
+          msg.style.background="#eef9f6";
+          msg.style.borderColor="#ccefe7";
+          msg.innerHTML='This email already has BetweenPay access. <a href="login.html?email='+encodeURIComponent(accessEmail)+'"><strong>Sign in instead →</strong></a>';
+          btn.disabled=false;
+          btn.innerHTML=defaultBtnHtml;
+          return;
+        }
         if(!r.ok||!j.approveUrl) throw new Error(j.error||"Could not start PayPal checkout.");
         location.href=j.approveUrl;
       }catch(e){
