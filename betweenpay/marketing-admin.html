@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>Marketing Automation — BetweenPay</title><link rel="stylesheet" href="commercial.css">
+<style>
+body{background:#f3f7f9}.shell{max-width:1450px;margin:auto;padding:20px 22px 70px}.nav2{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:18px}.links{display:flex;gap:12px;flex-wrap:wrap}.links a{text-decoration:none;font-weight:800}
+.hero{background:linear-gradient(135deg,#071f33,#0d5962);color:white;border-radius:28px;padding:28px 30px;display:flex;justify-content:space-between;gap:24px;align-items:center}.hero h1{font-size:44px;margin:5px 0 8px;letter-spacing:-.04em}.hero p{color:#cbe0e3;margin:0}.badge{background:#daf8ef;color:#087467;padding:7px 10px;border-radius:999px;font-size:11px;font-weight:900}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}.stat{background:#fff;border:1px solid #dce7ec;border-radius:18px;padding:17px}.stat span{font-size:10px;font-weight:900;color:#708692;text-transform:uppercase}.stat b{display:block;font-size:26px;margin-top:5px}.stat small{color:#81939d}
+.panel{background:#fff;border:1px solid #dce7ec;border-radius:24px;padding:22px;margin-top:16px}.panel-head{display:flex;justify-content:space-between;gap:15px;align-items:end;margin-bottom:15px}.panel h2{margin:0}.panel p{margin:4px 0 0;color:#708591;font-size:13px}
+.table-wrap{overflow:auto;border:1px solid #e0e9ed;border-radius:17px}.table{width:100%;min-width:900px;border-collapse:collapse}.table th{background:#f5faf9;padding:10px;text-align:left;font-size:10px;text-transform:uppercase;color:#687f8b}.table td{padding:11px 10px;border-top:1px solid #edf2f4;font-size:12px}.good{color:#087767;font-weight:900}.bad{color:#a12b38;font-weight:900}
+.builder{display:grid;grid-template-columns:1fr 1fr;gap:12px}.builder .full{grid-column:1/-1}.copyrow{display:flex;gap:8px}.copyrow input{flex:1}
+@media(max-width:900px){.stats{grid-template-columns:1fr 1fr}.hero{align-items:flex-start;flex-direction:column}}@media(max-width:620px){.shell{padding:14px}.stats{grid-template-columns:1fr 1fr}.builder{grid-template-columns:1fr}.builder .full{grid-column:auto}.hero h1{font-size:36px}.panel{padding:15px}}
+</style></head>
+<body><div class="shell">
+<div class="nav2"><a class="brand" href="./"><span class="mark">BP</span><span>Between<b>Pay</b></span></a><div class="links"><a href="sales-admin.html">Sales</a><a href="referral-admin.html">Referral admin</a><a href="./">Home</a><a href="admin-login.html?next=marketing-admin.html">Switch admin</a></div></div>
+<div id="app"><div class="panel"><p>Checking owner access…</p></div></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script>
+<script>
+const sb=supabase.createClient(BETWEENPAY_CONFIG.SUPABASE_URL,BETWEENPAY_CONFIG.SUPABASE_PUBLISHABLE_KEY),app=document.getElementById("app");
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+const money=n=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(Number(n||0));
+async function load(){
+ const {data:{session}}=await sb.auth.getSession();if(!session){location.replace("admin-login.html?next=marketing-admin.html");return}
+ const r=await fetch(BETWEENPAY_CONFIG.SUPABASE_URL+"/functions/v1/betweenpay-marketing-admin",{headers:{"apikey":BETWEENPAY_CONFIG.SUPABASE_PUBLISHABLE_KEY,"Authorization":"Bearer "+session.access_token}});
+ const d=await r.json();if(!r.ok){if(r.status===401||r.status===403){location.replace("admin-login.html?next=marketing-admin.html");return}app.innerHTML='<div class="panel"><h2>Could not load marketing dashboard</h2><p>'+esc(d.error||"Request failed")+'</p></div>';return}
+ render(d)
+}
+function render(d){
+ const f=d.funnel||{},e=d.email||{},sources=d.sources||[];
+ app.innerHTML=
+ '<section class="hero"><div><div class="kicker" style="color:#8ff0d6">AUTOMATED GROWTH</div><h1>Marketing Automation</h1><p>30-day attribution, lead capture, email nurture and checkout recovery.</p></div><span class="badge">15-minute automation cycle active</span></section>'+
+ '<div class="stats">'+
+ '<div class="stat"><span>Landing sessions</span><b>'+f.landing_sessions+'</b><small>Last 30 days</small></div>'+
+ '<div class="stat"><span>Leads captured</span><b>'+f.lead_captures+'</b><small>'+e.active_leads+' active nurture leads</small></div>'+
+ '<div class="stat"><span>Checkout starts</span><b>'+f.checkout_starts+'</b><small>'+f.checkout_to_sale+'% checkout→sale</small></div>'+
+ '<div class="stat"><span>Sales / revenue</span><b>'+f.sales+' · '+money(f.revenue)+'</b><small>'+f.landing_to_sale+'% landing→sale</small></div>'+
+ '<div class="stat"><span>Free calculator</span><b>'+f.calculator_sessions+'</b><small>'+f.calculator_results+' completed estimates</small></div>'+
+ '<div class="stat"><span>Emails sent</span><b>'+e.emails_sent+'</b><small>'+e.emails_queued+' queued</small></div>'+
+ '<div class="stat"><span>Recovery emails</span><b>'+e.recovery_sent+'</b><small>Opt-in abandoned checkout</small></div>'+
+ '<div class="stat"><span>Email health</span><b class="'+(e.emails_failed?'bad':'good')+'">'+(e.emails_failed?e.emails_failed+' failed':'All clear')+'</b><small>'+e.unsubscribed+' unsubscribed</small></div>'+
+ '</div>'+
+ '<section class="panel"><div class="panel-head"><div><h2>Source performance</h2><p>Shows which links and channels create visits, leads, checkouts and sales.</p></div></div>'+
+ (sources.length?'<div class="table-wrap"><table class="table"><thead><tr><th>Source</th><th>Medium</th><th>Campaign</th><th>Sessions</th><th>Leads</th><th>Checkout starts</th><th>Sales</th><th>Revenue</th><th>Conversion</th></tr></thead><tbody>'+sources.map(x=>'<tr><td><strong>'+esc(x.source)+'</strong></td><td>'+esc(x.medium)+'</td><td>'+esc(x.campaign)+'</td><td>'+x.sessions+'</td><td>'+x.leads+'</td><td>'+x.checkout_starts+'</td><td>'+x.sales+'</td><td>'+money(x.revenue)+'</td><td>'+x.conversion+'%</td></tr>').join("")+'</tbody></table></div>':'<p>No tracked traffic yet.</p>')+
+ '</section>'+
+ '<section class="panel"><div class="panel-head"><div><h2>Campaign link builder</h2><p>Create trackable links for free posts, directories, communities, emails or future $2/day tests.</p></div></div><div class="builder">'+
+ '<div class="field"><label>Destination</label><select id="dest"><option value="https://betweenpay.tasklaneco.com/">Homepage</option><option value="https://betweenpay.tasklaneco.com/free-calculator.html">Free calculator</option><option value="https://betweenpay.tasklaneco.com/checkout.html">Checkout</option></select></div>'+
+ '<div class="field"><label>Source</label><input id="src" placeholder="reddit, facebook, newsletter"></div>'+
+ '<div class="field"><label>Medium</label><input id="med" placeholder="organic, social, email"></div>'+
+ '<div class="field"><label>Campaign</label><input id="camp" placeholder="payday_help_oct"></div>'+
+ '<div class="field full"><label>Content / variation</label><input id="cont" placeholder="post_a, bio_link, comment_helpful"></div>'+
+ '<div class="field full"><label>Trackable URL</label><div class="copyrow"><input id="out" readonly><button class="btn" id="copy">Copy</button></div></div></div></section>';
+ ["dest","src","med","camp","cont"].forEach(id=>document.getElementById(id).addEventListener("input",build));
+ document.getElementById("copy").onclick=()=>navigator.clipboard.writeText(document.getElementById("out").value);
+ build()
+}
+function build(){const base=document.getElementById("dest").value,u=new URL(base),m={utm_source:"src",utm_medium:"med",utm_campaign:"camp",utm_content:"cont"};Object.entries(m).forEach(([k,id])=>{const v=document.getElementById(id).value.trim();if(v)u.searchParams.set(k,v)});document.getElementById("out").value=u.toString()}
+load();
+</script></body></html>
