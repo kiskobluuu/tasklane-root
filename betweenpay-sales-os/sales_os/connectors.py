@@ -237,6 +237,142 @@ class SupabaseConnector:
         except Exception:
             pass
 
+    def upsert(self, table: str, body: dict[str, Any] | list[dict[str, Any]], on_conflict: str) -> list[dict]:
+        r = httpx.post(
+            self._url(table),
+            headers=self._headers("resolution=merge-duplicates,return=representation"),
+            params={"on_conflict": on_conflict},
+            json=body,
+            timeout=45,
+        )
+        if r.status_code >= 400:
+            raise ConnectorError(f"Supabase {table} upsert failed: {r.status_code} {r.text[:500]}")
+        return r.json() or []
+
+    def sync_snapshot(self, metrics: MetricsSnapshot) -> None:
+        if not self.configured():
+            return
+        now = datetime.now(timezone.utc)
+        self.insert(
+            "betweenpay_growth_snapshots",
+            {
+                "captured_at": now.isoformat(),
+                "window_hours": 168,
+                "window_start": (now - timedelta(days=7)).isoformat(),
+                "sessions": metrics.sessions_7d,
+                "landing_views": metrics.landing_views_7d,
+                "contest_views": metrics.contest_views_7d,
+                "checkout_views": metrics.checkout_views_7d,
+                "checkout_starts": metrics.checkout_starts_7d,
+                "purchases": metrics.sales_7d,
+                "revenue": metrics.revenue_7d,
+                "leads": metrics.leads_7d,
+                "participant_joins": metrics.participant_joins_7d,
+                "qualified_referrals": metrics.qualified_referrals_7d,
+                "metrics": {
+                    "sales_24h": metrics.sales_24h,
+                    "revenue_24h": metrics.revenue_24h,
+                    "sessions_24h": metrics.sessions_24h,
+                    "checkout_starts_24h": metrics.checkout_starts_24h,
+                    "source_performance": metrics.source_performance[:50],
+                    "producer": "BetweenPay Sales OS",
+                },
+            },
+        )
+
+    def sync_experiments(self, experiments: list[dict[str, Any]]) -> None:
+        if not self.configured() or not experiments:
+            return
+        payload = []
+        for row in experiments[:100]:
+            learnings = row.get("learnings") or {}
+            if isinstance(learnings, str):
+                try:
+                    learnings = json.loads(learnings)
+                except Exception:
+                    learnings = {}
+            payload.append({
+                "experiment_key": row.get("experiment_key"),
+                "channel": row.get("channel") or "unknown",
+                "angle": row.get("angle") or "unknown",
+                "destination": row.get("destination"),
+                "objective": row.get("objective") or "completed_purchases",
+                "hypothesis": row.get("hypothesis"),
+                "status": row.get("status") or "active",
+                "started_at": row.get("started_at"),
+                "ended_at": row.get("ended_at"),
+                "minimum_sessions": self.store.get_int("min_sessions_before_judgment", 20),
+                "source": row.get("source"),
+                "medium": row.get("medium") or "organic",
+                "campaign": row.get("campaign"),
+                "content": row.get("content"),
+                "sessions": int(row.get("sessions") or 0),
+                "checkout_starts": int(row.get("checkout_starts") or 0),
+                "purchases": int(row.get("purchases") or 0),
+                "revenue": float(row.get("revenue") or 0),
+                "score": row.get("score"),
+                "learnings": learnings,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            })
+        self.upsert("betweenpay_growth_experiments", payload, "experiment_key")
+
+    def update_heartbeat(
+        self,
+        app_version: str,
+        autopilot: bool,
+        target: int,
+        sales_7d: int = 0,
+        last_strategy_cycle_at: str | None = None,
+        last_publish_cycle_at: str | None = None,
+        connection_state: dict[str, Any] | None = None,
+        machine_state: dict[str, Any] | None = None,
+    ) -> None:
+        if not self.configured():
+            return
+        body: dict[str, Any] = {
+            "app_version": app_version,
+            "last_seen_at": datetime.now(timezone.utc).isoformat(),
+            "autopilot_enabled": bool(autopilot),
+            "weekly_sales_target": int(target),
+            "sales_7d": int(sales_7d),
+            "gap": max(0, int(target) - int(sales_7d)),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        if last_strategy_cycle_at:
+            body["last_strategy_cycle_at"] = last_strategy_cycle_at
+        if last_publish_cycle_at:
+            body["last_publish_cycle_at"] = last_publish_cycle_at
+        if connection_state is not None:
+            body["connection_state"] = connection_state
+        if machine_state is not None:
+            body["machine_state"] = machine_state
+        self.patch("betweenpay_sales_os_heartbeat", {"id": "eq.1"}, body)
+
+    def pending_commands(self, limit: int = 20) -> list[dict]:
+        if not self.configured():
+            return []
+        return self.get(
+            "betweenpay_sales_os_commands",
+            {
+                "select": "*",
+                "status": "eq.pending",
+                "order": "created_at.asc",
+                "limit": str(limit),
+            },
+        )
+
+    def update_command(self, command_id: int, status: str, result: dict | None = None, error: str | None = None) -> None:
+        body: dict[str, Any] = {"status": status}
+        if status == "running":
+            body["started_at"] = datetime.now(timezone.utc).isoformat()
+        if status in {"completed", "failed", "rejected", "cancelled"}:
+            body["completed_at"] = datetime.now(timezone.utc).isoformat()
+        if result is not None:
+            body["result"] = result
+        if error is not None:
+            body["error"] = error[:2000]
+        self.patch("betweenpay_sales_os_commands", {"id": f"eq.{int(command_id)}"}, body)
+
 
 class BufferPublisher:
     def __init__(self, store):
