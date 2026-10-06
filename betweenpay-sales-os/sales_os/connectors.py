@@ -7,6 +7,7 @@ from typing import Any
 import httpx
 
 from .config import COMPLETED_ORDER_STATUSES
+from .formatting import normalize_social_text
 from .models import MetricsSnapshot
 from .vault import get_secret
 
@@ -491,7 +492,7 @@ class BufferPublisher:
             "channelId": channel["id"],
             "schedulingType": "automatic",
             "mode": "shareNow",
-            "text": str(item.get("text") or ""),
+            "text": normalize_social_text(item.get("text"), platform),
             "assets": [{"image": {"url": item["asset_url"]}}] if item.get("asset_url") else [],
         }
 
@@ -507,12 +508,16 @@ class BufferPublisher:
                 parts = [p.strip() for p in str(item.get("text") or "").split("\n---THREAD---\n") if p.strip()]
                 thread = [
                     {
-                        "text": p,
+                        "text": normalize_social_text(p, "x"),
                         "assets": [{"image": {"url": item["asset_url"]}}] if i == 0 and item.get("asset_url") else [],
                     }
                     for i, p in enumerate(parts)
                 ]
             if len(thread) > 1:
+                thread = [
+                    {**part, "text": normalize_social_text(part.get("text"), "x")}
+                    for part in thread
+                ]
                 input_obj["text"] = thread[0]["text"]
                 input_obj["assets"] = []
                 input_obj["metadata"] = {"twitter": {"thread": thread}}
