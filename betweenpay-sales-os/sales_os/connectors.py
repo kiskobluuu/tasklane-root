@@ -147,6 +147,13 @@ class SupabaseConnector:
         def event_count(rows: list[dict], name: str) -> int:
             return sum(1 for e in rows if e.get("event_name") == name)
 
+        def unique_event_sessions(rows: list[dict], name: str) -> int:
+            return len({
+                e.get("session_id")
+                for e in rows
+                if e.get("event_name") == name and e.get("session_id")
+            })
+
         perf: dict[tuple[str, str, str, str], dict[str, Any]] = {}
         for e in events7:
             key = (
@@ -203,14 +210,14 @@ class SupabaseConnector:
             landing_views_7d=event_count(events7, "landing_view"),
             contest_views_7d=event_count(events7, "contest_view"),
             checkout_views_7d=event_count(events7, "checkout_view"),
-            checkout_starts_7d=event_count(events7, "checkout_start"),
+            checkout_starts_7d=unique_event_sessions(events7, "checkout_start"),
             leads_7d=leads7,
             participant_joins_7d=joins7,
             qualified_referrals_7d=qualified7,
             sales_24h=len(completed24),
             revenue_24h=sum(float(o.get("amount") or 0) for o in completed24),
             sessions_24h=len(sessions24),
-            checkout_starts_24h=event_count(events24, "checkout_start"),
+            checkout_starts_24h=unique_event_sessions(events24, "checkout_start"),
             source_performance=source_performance,
             raw=raw,
         )
