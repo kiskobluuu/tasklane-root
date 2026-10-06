@@ -16,7 +16,7 @@ The engine follows a closed loop:
 - Runs continuously in the Windows system tray.
 - Optional start-at-login support.
 - Pulls live BetweenPay funnel, order, lead and referral data from Supabase.
-- Calculates rolling 7-day and 24-hour sales/funnel performance.
+- Calculates rolling 7-day and 24-hour sales/funnel performance. Checkout-start and purchase-rate dashboard percentages use unique measured sessions so repeated checkout events do not inflate conversion.
 - Scores traffic sources and campaign/content experiments.
 - Protects small samples from premature winner/loser decisions.
 - Syncs the existing BetweenPay social queue into the desktop program.
