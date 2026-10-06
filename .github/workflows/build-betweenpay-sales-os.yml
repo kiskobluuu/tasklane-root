@@ -41,7 +41,6 @@ jobs:
           pyinstaller --noconfirm --clean --onefile --windowed
           --name BetweenPaySalesOS
           --collect-all keyring
-          --collect-all mcp
           app.py
 
       - name: Package executable
