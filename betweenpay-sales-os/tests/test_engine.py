@@ -27,3 +27,8 @@ def test_target_reached(tmp_path):
     metrics = MetricsSnapshot(sessions_7d=1000, checkout_starts_7d=200, sales_7d=100)
     constraint, _, _ = engine._diagnose(metrics)
     assert constraint == "target_reached"
+
+
+def test_checkout_rate_is_bounded():
+    metrics = MetricsSnapshot(sessions_7d=12, checkout_starts_7d=12, sales_7d=0)
+    assert metrics.checkout_start_rate == 1.0
