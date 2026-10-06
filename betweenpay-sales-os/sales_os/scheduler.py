@@ -25,9 +25,15 @@ class EngineScheduler:
             id="publisher", max_instances=1, coalesce=True,
             replace_existing=True, next_run_time=None,
         )
+        self.scheduler.add_job(
+            self._safe_commands, "interval", minutes=2,
+            id="command_bridge", max_instances=1, coalesce=True,
+            replace_existing=True, next_run_time=None,
+        )
         self.scheduler.start()
 
     def run_startup_cycle(self) -> None:
+        self._safe_commands()
         if self.store.get_bool("autopilot_enabled"):
             self._safe_engine()
             self._safe_publish()
@@ -56,6 +62,12 @@ class EngineScheduler:
             self.engine.publish_due()
         except Exception:
             logger.exception("Publishing cycle failed")
+
+    def _safe_commands(self) -> None:
+        try:
+            self.engine.process_remote_commands()
+        except Exception:
+            logger.exception("Cloud command bridge cycle failed")
 
     def stop(self) -> None:
         if self.scheduler.running:
