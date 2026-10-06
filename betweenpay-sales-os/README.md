@@ -43,7 +43,7 @@ Open **Connections** in the Windows app and enter each credential once:
 
 1. **Supabase service-role key** for the existing BetweenPay project. The project URL is prefilled.
 2. **Buffer API access token** for the Buffer workspace that holds the authorized Facebook/X/Pinterest channels.
-3. **OpenAI API key** for autonomous campaign ideation. This is optional; the daily call cap defaults to 6 and can be changed in Settings.
+3. **OpenAI API key** for autonomous campaign ideation. This is optional; the daily call cap defaults to 6 and can be changed in Settings. The default model is `gpt-5.6-luna`, selected to keep routine strategy generation inexpensive; you can change the model in Settings.
 4. **GitHub token** is optional and reserved for future direct repository/site publishing from the desktop app. ChatGPT can already maintain this source through the connected GitHub app.
 
 All entered secrets go to Windows Credential Manager.
