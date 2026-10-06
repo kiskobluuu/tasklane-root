@@ -1,63 +1,406 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from datetime import datetime, timezone
-from .connectors import BetweenPayMetrics, BufferPublisher, AIPlanner
 
-@dataclass
-class EngineResult:
-    sales_7d: int
-    target: int
-    gap: int
-    pace_per_day: float
-    required_per_day: float
-    diagnosis: str
-    action: str
+import json
+import random
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+from .ai_planner import AIPlanner
+from .connectors import BufferPublisher, SupabaseConnector
+from .models import EngineDecision, MetricsSnapshot
+from .templates import contest_variants, fallback_variants
+
 
 class SalesEngine:
     def __init__(self, store):
         self.store = store
-        self.last_run: EngineResult | None = None
+        self.supabase = SupabaseConnector(store)
+        self.buffer = BufferPublisher(store)
+        self.ai = AIPlanner(store)
+        self.last_decision: EngineDecision | None = None
 
-    def run_once(self) -> EngineResult:
-        target = int(self.store.get("weekly_sales_target", "100"))
-        metrics = BetweenPayMetrics(self.store.get("supabase_metrics_url", "")).fetch()
-        sales = int(metrics.get("sales_7d", 0) or 0)
-        revenue = float(metrics.get("revenue_7d", 0) or 0)
-        sessions = int(metrics.get("sessions_7d", 0) or 0)
-        checkouts = int(metrics.get("checkout_starts_7d", 0) or 0)
+    def _diagnose(self, m: MetricsSnapshot) -> tuple[str, str, str]:
+        target = self.store.get_int("weekly_sales_target", 100)
+        gap = max(0, target - m.sales_7d)
+        min_sessions = self.store.get_int("min_sessions_before_judgment", 20)
+        min_checkouts = self.store.get_int("min_checkouts_before_judgment", 8)
+        if gap == 0:
+            return (
+                "target_reached",
+                f"The rolling 7-day target of {target} sales has been reached.",
+                "Protect winners, increase durable reach, and keep a small exploration budget active.",
+            )
+        if m.sessions_7d < min_sessions:
+            return (
+                "traffic",
+                f"Only {m.sessions_7d} measured sessions are available in the last 7 days, which is too little traffic to judge conversion reliably.",
+                "Increase diverse qualified organic traffic across connected channels and free discovery surfaces.",
+            )
+        if m.checkout_starts_7d < min_checkouts or m.checkout_start_rate < 0.03:
+            return (
+                "click_to_checkout",
+                f"Traffic exists, but checkout starts are weak ({m.checkout_starts_7d} starts from {m.sessions_7d} sessions).",
+                "Test clearer problem/solution hooks, stronger CTAs, and lower-friction calculator-to-product bridges.",
+            )
+        if m.checkout_to_purchase_rate < 0.15:
+            return (
+                "checkout_conversion",
+                f"Checkout intent exists, but checkout-to-purchase conversion is only {m.checkout_to_purchase_rate:.1%}.",
+                "Prioritize credibility, purchase reassurance, recovery messaging, and detection of checkout friction.",
+            )
+        return (
+            "scale_winners",
+            f"The funnel is producing purchases, but {gap} more sales are needed to reach {target} in the rolling 7-day window.",
+            "Scale the best-performing source/angle while reserving part of activity for new experiments.",
+        )
 
-        gap = max(0, target - sales)
-        pace = sales / 7.0
-        required = gap / 7.0 if gap else 0.0
+    def _connected_channels(self) -> list[str]:
+        status = self.buffer.test_connection()
+        if not status.get("ok"):
+            return []
+        services = status.get("channels") or []
+        out = []
+        if "facebook" in services:
+            out.append("facebook")
+        if "twitter" in services:
+            out.append("x")
+        if "pinterest" in services:
+            out.append("pinterest")
+        return out
 
-        if not metrics.get("configured"):
-            diagnosis = "Metrics connector is not configured yet."
-            action = "Configure the BetweenPay metrics endpoint in Settings."
-        elif sessions < 20:
-            diagnosis = "Primary constraint is traffic volume; there is not enough sample to judge conversion reliably."
-            action = "Increase diverse organic acquisition tests while preserving UTM attribution."
-        elif checkouts == 0:
-            diagnosis = "Traffic is arriving without checkout starts."
-            action = "Test stronger product/problem CTAs and lower-friction calculator-to-checkout bridges."
-        elif sales == 0:
-            diagnosis = "Checkout interest exists but completed purchases are not following."
-            action = "Inspect checkout friction and strengthen recovery/credibility messaging."
-        elif sales < target:
-            diagnosis = f"Sales are below the {target}/7d target with a remaining gap of {gap}."
-            action = "Exploit the best converting source while reserving 30% of activity for new experiments."
-        else:
-            diagnosis = "Weekly target reached."
-            action = "Protect winning channels, expand cautiously, and keep testing for higher sustainable volume."
+    def _sync_experiments_from_metrics(self, m: MetricsSnapshot) -> None:
+        min_sessions = self.store.get_int("min_sessions_before_judgment", 20)
+        for p in m.source_performance:
+            source = str(p.get("source") or "direct")
+            campaign = str(p.get("campaign") or "none")
+            content = str(p.get("content") or "none")
+            key = f"{source}:{campaign}:{content}"
+            sessions = int(p.get("sessions") or 0)
+            checkouts = int(p.get("checkout_starts") or 0)
+            purchases = int(p.get("purchases") or 0)
+            revenue = float(p.get("revenue") or 0)
+            maturity = min(1.0, sessions / max(1, min_sessions))
+            score = maturity * (purchases * 100 + revenue * 2 + checkouts * 5 + min(sessions, 100) * 0.1)
+            status = "active"
+            learning = {"sample_mature": sessions >= min_sessions}
+            if sessions >= min_sessions and purchases > 0:
+                status = "winner"
+                learning["summary"] = "Produced at least one purchase with a mature traffic sample."
+            elif sessions >= min_sessions and checkouts == 0:
+                status = "loser"
+                learning["summary"] = "Mature sample produced no checkout starts."
+            self.store.upsert_experiment({
+                "experiment_key": key,
+                "channel": source,
+                "angle": content,
+                "source": source,
+                "campaign": campaign,
+                "content": content,
+                "sessions": sessions,
+                "checkout_starts": checkouts,
+                "purchases": purchases,
+                "revenue": revenue,
+                "score": score,
+                "status": status,
+                "learnings": learning,
+            })
 
-        self.store.save_snapshot(sales, revenue, sessions, checkouts, metrics)
-        self.store.log_action("engine_decision", diagnosis, payload={
-            "recommended_action": action,
-            "sales_7d": sales,
-            "target": target,
-            "gap": gap,
-            "sessions_7d": sessions,
-            "checkout_starts_7d": checkouts,
-        }, status="executed")
+    def _sync_remote_social_queue(self) -> int:
+        if not self.supabase.configured():
+            return 0
+        imported = 0
+        for row in self.supabase.fetch_remote_social_queue(100):
+            remote_id = int(row["id"])
+            already = [r for r in self.store.content_queue(500) if r["remote_queue_id"] == remote_id]
+            if already:
+                continue
+            payload = row.get("provider_payload") or {}
+            text = str(row.get("post_copy") or "")
+            performance: dict[str, Any] = {}
+            if row.get("platform") == "x" and isinstance(payload, dict) and payload.get("thread"):
+                thread = []
+                for i, part in enumerate(payload.get("thread") or []):
+                    thread.append({
+                        "text": str(part.get("text") or ""),
+                        "assets": [{"image": {"url": row.get("asset_url")}}]
+                        if i == 0 and row.get("asset_url") else [],
+                    })
+                performance["thread"] = thread
+            if row.get("platform") == "pinterest" and isinstance(payload, dict):
+                title = payload.get("title")
+                destination = payload.get("destination") or row.get("destination")
+                text = payload.get("description") or text
+            else:
+                title = None
+                destination = row.get("destination")
+            self.store.queue_content({
+                "platform": row.get("platform"),
+                "post_type": row.get("post_type") or "post",
+                "theme": row.get("theme") or "imported",
+                "growth_angle": row.get("growth_angle"),
+                "text": text,
+                "title": title,
+                "destination": destination,
+                "asset_url": row.get("asset_url"),
+                "source": row.get("source"),
+                "medium": row.get("medium") or "organic",
+                "campaign": row.get("campaign"),
+                "content": row.get("content"),
+                "experiment_key": row.get("experiment_key"),
+                "scheduled_for": row.get("scheduled_for") or datetime.now(timezone.utc).isoformat(),
+                "status": "ready" if row.get("status") == "ready" else "scheduled",
+                "provider": "buffer",
+                "remote_queue_id": remote_id,
+                "performance": performance,
+            })
+            imported += 1
+        if imported:
+            self.store.log_action(
+                "sync_social_queue",
+                f"Imported {imported} existing BetweenPay social queue item(s) into the desktop engine.",
+                status="executed",
+            )
+        return imported
 
-        self.last_run = EngineResult(sales, target, gap, pace, required, diagnosis, action)
-        return self.last_run
+    def _daily_post_count(self) -> int:
+        today = datetime.now(timezone.utc).date().isoformat()
+        return sum(
+            1
+            for r in self.store.content_queue(500)
+            if str(r["created_at"]).startswith(today) and r["status"] in {"ready", "scheduled", "published"}
+        )
+
+    def _next_slot(self, offset_index: int = 0) -> datetime:
+        now = datetime.now(timezone.utc)
+        return now + timedelta(minutes=20 + 90 * offset_index)
+
+    def _queue_variants(self, variants: list[dict], max_new: int) -> int:
+        queued = 0
+        for variant in variants:
+            if queued >= max_new:
+                break
+            platform = variant["platform"]
+            scheduled = self._next_slot(queued)
+            if self.store.content_exists(platform, variant.get("campaign"), variant.get("content"), scheduled.date().isoformat()):
+                continue
+            exp_key = f"{platform}:{variant.get('campaign')}:{variant.get('content')}"
+            post_type = "thread" if platform == "x" and "---THREAD---" in variant.get("text", "") else ("pin" if platform == "pinterest" else "post")
+            self.store.queue_content({
+                **variant,
+                "post_type": post_type,
+                "growth_angle": variant.get("angle"),
+                "experiment_key": exp_key,
+                "scheduled_for": scheduled.isoformat(),
+                "status": "ready",
+                "provider": "buffer",
+            })
+            self.store.upsert_experiment({
+                "experiment_key": exp_key,
+                "channel": platform,
+                "angle": variant.get("angle") or variant.get("content"),
+                "destination": variant.get("destination"),
+                "hypothesis": variant.get("hypothesis"),
+                "source": variant.get("source"),
+                "medium": variant.get("medium"),
+                "campaign": variant.get("campaign"),
+                "content": variant.get("content"),
+                "status": "active",
+            })
+            self.store.log_action(
+                "queue_campaign_variant",
+                variant.get("hypothesis") or "Queued a measurable organic campaign variant.",
+                channel=platform,
+                experiment_key=exp_key,
+                payload={"scheduled_for": scheduled.isoformat(), "content": variant.get("content")},
+                status="executed",
+            )
+            queued += 1
+        return queued
+
+    def _plan_growth_actions(self, m: MetricsSnapshot, constraint: str, diagnosis: str) -> list[dict]:
+        actions = []
+        channels = self._connected_channels()
+        if not channels:
+            actions.append({"type": "blocker", "reason": "No Buffer publishing channels are available through the API yet."})
+            return actions
+
+        post_cap = self.store.get_int("daily_post_cap", 6)
+        remaining = max(0, post_cap - self._daily_post_count())
+        if remaining <= 0:
+            actions.append({"type": "hold", "reason": "Daily organic post cap reached; wait for performance data."})
+            return actions
+
+        desired = min(remaining, max(1, len(channels)))
+        variants: list[dict] = []
+        if self.ai.configured() and self.ai.allowed_today():
+            variants = self.ai.generate_campaign_variants(m, diagnosis, channels, count=desired)
+        if not variants:
+            variants = fallback_variants(channels)
+            if constraint in {"traffic", "scale_winners"} and random.random() < 0.35:
+                variants = contest_variants(channels) + variants
+        queued = self._queue_variants(variants, desired)
+        actions.append({"type": "queue_variants", "count": queued, "channels": channels})
+        return actions
+
+    def run_once(self) -> EngineDecision:
+        target = self.store.get_int("weekly_sales_target", 100)
+        if not self.supabase.configured():
+            decision = EngineDecision(
+                diagnosis="Live BetweenPay data is not connected yet.",
+                primary_constraint="configuration",
+                recommended_action="Enter the Supabase service-role key once in Connections, then test the connection.",
+                urgency="blocked",
+                target=target,
+                sales_7d=0,
+                gap=target,
+                pace_per_day=0.0,
+                required_per_day=target / 7.0,
+                planned_actions=[],
+            )
+            self.last_decision = decision
+            self.store.log_action("engine_blocked", decision.diagnosis, status="blocked")
+            return decision
+
+        metrics = self.supabase.collect_metrics()
+        self.store.save_snapshot(metrics)
+        self._sync_experiments_from_metrics(metrics)
+        self._sync_remote_social_queue()
+        constraint, diagnosis, recommended = self._diagnose(metrics)
+        target = self.store.get_int("weekly_sales_target", 100)
+        gap = max(0, target - metrics.sales_7d)
+        planned = self._plan_growth_actions(metrics, constraint, diagnosis) if self.store.get_bool("autopilot_enabled") else []
+
+        urgency = "on_target" if gap == 0 else ("high" if metrics.sales_24h < target / 7 else "normal")
+        decision = EngineDecision(
+            diagnosis=diagnosis,
+            primary_constraint=constraint,
+            recommended_action=recommended,
+            urgency=urgency,
+            target=target,
+            sales_7d=metrics.sales_7d,
+            gap=gap,
+            pace_per_day=metrics.sales_7d / 7.0,
+            required_per_day=target / 7.0,
+            planned_actions=planned,
+        )
+        self.last_decision = decision
+        self.store.log_action(
+            "engine_decision",
+            diagnosis,
+            payload={
+                "constraint": constraint,
+                "recommended_action": recommended,
+                "target": target,
+                "sales_7d": metrics.sales_7d,
+                "gap": gap,
+                "sales_24h": metrics.sales_24h,
+                "planned_actions": planned,
+            },
+            status="executed",
+        )
+        self.supabase.log_remote_growth_action({
+            "action_type": "desktop_engine_decision",
+            "rationale": diagnosis,
+            "action_payload": {
+                "constraint": constraint,
+                "recommended_action": recommended,
+                "sales_7d": metrics.sales_7d,
+                "target": target,
+                "gap": gap,
+            },
+            "status": "executed",
+            "executed_at": datetime.now(timezone.utc).isoformat(),
+        })
+        return decision
+
+    def publish_due(self) -> dict[str, int]:
+        summary = {"published": 0, "scheduled": 0, "failed": 0, "blocked": 0}
+        if not self.store.get_bool("autopilot_enabled"):
+            return summary
+        if not self.buffer.configured():
+            return summary
+        now = datetime.now(timezone.utc).isoformat()
+        for row in self.store.due_content(now, 12):
+            item = dict(row)
+            try:
+                post = self.buffer.create_post(item)
+                provider_status = str(post.get("status") or "pending")
+                final_status = "published" if provider_status == "sent" else "scheduled"
+                self.store.update_content(
+                    row["id"],
+                    status=final_status,
+                    provider_post_id=post.get("id"),
+                    provider_status=provider_status,
+                    last_error=None,
+                )
+                if row["remote_queue_id"] and self.supabase.configured():
+                    self.supabase.update_remote_social_queue(
+                        int(row["remote_queue_id"]),
+                        {
+                            "status": final_status,
+                            "provider": "buffer",
+                            "external_post_id": post.get("id"),
+                            "provider_status": provider_status,
+                            "provider_updated_at": datetime.now(timezone.utc).isoformat(),
+                            "last_error": None,
+                        },
+                    )
+                self.store.log_action(
+                    "publish_social",
+                    f"Sent {row['platform']} content to Buffer.",
+                    channel=row["platform"],
+                    experiment_key=row["experiment_key"],
+                    payload={"provider_post_id": post.get("id")},
+                    status="executed",
+                )
+                summary[final_status] += 1
+            except Exception as exc:
+                msg = str(exc)[:1000]
+                blocked = "not connected" in msg.lower() or "no board" in msg.lower()
+                self.store.update_content(
+                    row["id"],
+                    status="ready" if blocked else "failed",
+                    last_error=msg,
+                    provider_status="blocked" if blocked else "error",
+                )
+                if row["remote_queue_id"] and self.supabase.configured():
+                    self.supabase.update_remote_social_queue(
+                        int(row["remote_queue_id"]),
+                        {
+                            "provider": "buffer",
+                            "provider_status": "blocked" if blocked else "error",
+                            "provider_updated_at": datetime.now(timezone.utc).isoformat(),
+                            "last_error": msg,
+                        },
+                    )
+                self.store.log_action(
+                    "publish_social",
+                    msg,
+                    channel=row["platform"],
+                    experiment_key=row["experiment_key"],
+                    status="blocked" if blocked else "failed",
+                )
+                summary["blocked" if blocked else "failed"] += 1
+        return summary
+
+    def reconcile_buffer_posts(self) -> int:
+        if not self.buffer.configured():
+            return 0
+        changed = 0
+        for row in self.store.content_queue(200):
+            if row["status"] != "scheduled" or not row["provider_post_id"]:
+                continue
+            try:
+                post = self.buffer.get_post(row["provider_post_id"])
+                if not post:
+                    continue
+                status = str(post.get("status") or "")
+                if status == "sent":
+                    self.store.update_content(row["id"], status="published", provider_status="sent")
+                    changed += 1
+                elif status == "error":
+                    self.store.update_content(row["id"], status="failed", provider_status="error")
+                    changed += 1
+            except Exception:
+                continue
+        return changed
