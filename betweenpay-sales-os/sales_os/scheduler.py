@@ -18,17 +18,17 @@ class EngineScheduler:
         self.scheduler.add_job(
             self._safe_engine, "interval", minutes=engine_minutes,
             id="strategy_engine", max_instances=1, coalesce=True,
-            replace_existing=True, next_run_time=None,
+            replace_existing=True,
         )
         self.scheduler.add_job(
             self._safe_publish, "interval", minutes=publish_minutes,
             id="publisher", max_instances=1, coalesce=True,
-            replace_existing=True, next_run_time=None,
+            replace_existing=True,
         )
         self.scheduler.add_job(
             self._safe_commands, "interval", minutes=2,
             id="command_bridge", max_instances=1, coalesce=True,
-            replace_existing=True, next_run_time=None,
+            replace_existing=True,
         )
         self.scheduler.start()
 
