@@ -13,7 +13,7 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-pyinstaller --noconfirm --clean --onefile --windowed --name BetweenPaySalesOS --collect-all keyring --collect-all mcp app.py
+pyinstaller --noconfirm --clean --onefile --windowed --name BetweenPaySalesOS --collect-all keyring app.py
 if errorlevel 1 (
   echo Build failed.
   pause
