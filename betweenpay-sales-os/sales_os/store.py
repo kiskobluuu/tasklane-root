@@ -166,6 +166,17 @@ class Store:
             )
             self.conn.commit()
 
+            # v1.0.3 repair: Buffer requires Facebook metadata.type.
+            self.conn.execute(
+                """UPDATE content_queue
+                   SET status='ready', provider_status=NULL, last_error=NULL
+                   WHERE provider='buffer'
+                     AND platform='facebook'
+                     AND status='failed'
+                     AND last_error LIKE 'Invalid post: Facebook posts require a type%'"""
+            )
+            self.conn.commit()
+
         defaults = {
             "weekly_sales_target": str(DEFAULT_WEEKLY_TARGET),
             "product_price": str(DEFAULT_PRODUCT_PRICE),
