@@ -130,6 +130,21 @@ class Store:
                   performance TEXT NOT NULL DEFAULT '{}'
                 );
 
+                CREATE TABLE IF NOT EXISTS acquisition_queue(
+                  remote_id INTEGER PRIMARY KEY,
+                  channel TEXT NOT NULL,
+                  placement TEXT,
+                  priority INTEGER NOT NULL DEFAULT 50,
+                  status TEXT NOT NULL DEFAULT 'ready',
+                  destination TEXT,
+                  source TEXT,
+                  medium TEXT,
+                  campaign TEXT,
+                  content TEXT,
+                  notes TEXT,
+                  updated_at TEXT NOT NULL
+                );
+
                 CREATE TABLE IF NOT EXISTS ai_usage(
                   id INTEGER PRIMARY KEY AUTOINCREMENT,
                   created_at TEXT NOT NULL,
@@ -408,6 +423,42 @@ class Store:
         with self.lock:
             self.conn.execute(f"UPDATE content_queue SET {','.join(pairs)} WHERE id=?", values)
             self.conn.commit()
+
+    def upsert_acquisition_items(self, items: list[dict[str, Any]]) -> None:
+        now = datetime.now(timezone.utc).isoformat()
+        with self.lock:
+            for item in items:
+                self.conn.execute(
+                    """INSERT INTO acquisition_queue(
+                       remote_id,channel,placement,priority,status,destination,source,medium,campaign,content,notes,updated_at
+                    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+                    ON CONFLICT(remote_id) DO UPDATE SET
+                       channel=excluded.channel,placement=excluded.placement,priority=excluded.priority,
+                       status=excluded.status,destination=excluded.destination,source=excluded.source,
+                       medium=excluded.medium,campaign=excluded.campaign,content=excluded.content,
+                       notes=excluded.notes,updated_at=excluded.updated_at""",
+                    (
+                        int(item["id"]),
+                        item.get("channel") or "Unknown",
+                        item.get("placement"),
+                        int(item.get("priority") or 50),
+                        item.get("status") or "ready",
+                        item.get("destination"),
+                        item.get("source"),
+                        item.get("medium"),
+                        item.get("campaign"),
+                        item.get("content"),
+                        item.get("notes"),
+                        now,
+                    ),
+                )
+            self.conn.commit()
+
+    def acquisition_items(self, limit: int = 300):
+        with self.lock:
+            return self.conn.execute(
+                "SELECT * FROM acquisition_queue ORDER BY priority DESC, remote_id ASC LIMIT ?", (limit,)
+            ).fetchall()
 
     def ai_calls_today(self) -> int:
         day = datetime.now(timezone.utc).date().isoformat()
