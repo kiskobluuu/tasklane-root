@@ -13,7 +13,7 @@ The engine follows a closed loop:
 ## Version 1.0 capabilities
 
 - Windows desktop command center built with PySide6.
-- Runs continuously in the Windows system tray.
+- Runs continuously in the Windows system tray with active strategy, publishing, and command-bridge schedules.
 - Optional start-at-login support.
 - Pulls live BetweenPay funnel, order, lead and referral data from Supabase.
 - Calculates rolling 7-day and 24-hour sales/funnel performance. Checkout-start and purchase-rate dashboard percentages use unique measured sessions so repeated checkout events do not inflate conversion.
