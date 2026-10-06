@@ -8,6 +8,7 @@ from typing import Any
 from .ai_planner import AIPlanner
 from .config import APP_VERSION, BETWEENPAY_SITE, CHANNELS
 from .connectors import BufferPublisher, SupabaseConnector
+from .formatting import normalize_social_text
 from .models import EngineDecision, MetricsSnapshot
 from .templates import contest_variants, fallback_variants
 
@@ -123,13 +124,13 @@ class SalesEngine:
             if already:
                 continue
             payload = row.get("provider_payload") or {}
-            text = str(row.get("post_copy") or "")
+            text = normalize_social_text(row.get("post_copy"), str(row.get("platform") or ""))
             performance: dict[str, Any] = {}
             if row.get("platform") == "x" and isinstance(payload, dict) and payload.get("thread"):
                 thread = []
                 for i, part in enumerate(payload.get("thread") or []):
                     thread.append({
-                        "text": str(part.get("text") or ""),
+                        "text": normalize_social_text(part.get("text"), "x"),
                         "assets": [{"image": {"url": row.get("asset_url")}}]
                         if i == 0 and row.get("asset_url") else [],
                     })
@@ -137,7 +138,7 @@ class SalesEngine:
             if row.get("platform") == "pinterest" and isinstance(payload, dict):
                 title = payload.get("title")
                 destination = payload.get("destination") or row.get("destination")
-                text = payload.get("description") or text
+                text = normalize_social_text(payload.get("description") or text, "pinterest")
             else:
                 title = None
                 destination = row.get("destination")
@@ -391,7 +392,7 @@ class SalesEngine:
                     result = {"key": key, "value": str(value)}
                 elif command == "queue_content":
                     platform = str(payload.get("platform") or "").lower()
-                    text = str(payload.get("text") or "").strip()
+                    text = normalize_social_text(payload.get("text"), platform)
                     destination = str(payload.get("destination") or "").strip()
                     if platform not in CHANNELS:
                         raise PermissionError("Unsupported publishing platform.")
