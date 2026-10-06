@@ -76,6 +76,11 @@ class SalesEngine:
             source = str(p.get("source") or "direct")
             campaign = str(p.get("campaign") or "none")
             content = str(p.get("content") or "none")
+            # The Experiments screen is for intentionally tagged marketing tests.
+            # Direct/referral traffic without campaign/content remains in funnel analytics
+            # but must not outrank controlled experiments.
+            if campaign.lower() in {"", "none"} and content.lower() in {"", "none"}:
+                continue
             key = f"{source}:{campaign}:{content}"
             sessions = int(p.get("sessions") or 0)
             checkouts = int(p.get("checkout_starts") or 0)
