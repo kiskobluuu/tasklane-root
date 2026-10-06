@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from .config import APP_NAME, APP_VERSION
+from .ai_planner import AIPlanner
 from .connectors import BufferPublisher, SupabaseConnector
 from .startup import set_run_on_startup
 from .vault import get_secret, set_secret
@@ -293,7 +294,7 @@ class MainWindow(QMainWindow):
         self.ai_limit.setRange(0, 100)
         self.ai_limit.setValue(self.store.get_int("openai_daily_call_limit", 6))
 
-        self.ai_model = QLineEdit(self.store.get("openai_model", "gpt-5.6-luna"))
+        self.ai_model = QLineEdit(self.store.get("openai_model", "gpt-6-luna"))
         self.board_name = QLineEdit(self.store.get("pinterest_board_name", "BetweenPay"))
 
         self.autopilot = QCheckBox("Enable autonomous execution")
@@ -359,10 +360,11 @@ class MainWindow(QMainWindow):
                 + " (Facebook/X/Pinterest should all appear when fully connected)"
             )
 
+        ai = AIPlanner(self.store).test_connection()
         lines.append(
-            ("OK " if get_secret("openai_api_key") else "INFO ")
-            + "OpenAI API key: "
-            + ("stored" if get_secret("openai_api_key") else "not configured; built-in templates will be used")
+            ("OK " if ai.get("ok") else "ERROR ")
+            + "OpenAI: "
+            + ai.get("message", "")
         )
         lines.append(
             ("OK " if get_secret("github_token") else "INFO ")
@@ -377,7 +379,7 @@ class MainWindow(QMainWindow):
         self.store.set("engine_interval_minutes", self.engine_interval.value())
         self.store.set("publish_interval_minutes", self.publish_interval.value())
         self.store.set("openai_daily_call_limit", self.ai_limit.value())
-        self.store.set("openai_model", self.ai_model.text().strip() or "gpt-5.6-luna")
+        self.store.set("openai_model", self.ai_model.text().strip() or "gpt-6-luna")
         self.store.set("pinterest_board_name", self.board_name.text().strip() or "BetweenPay")
         self.store.set("autopilot_enabled", "1" if self.autopilot.isChecked() else "0")
         self.store.set("run_on_startup", "1" if self.run_startup.isChecked() else "0")
