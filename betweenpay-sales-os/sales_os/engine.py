@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from .ai_planner import AIPlanner
+from .config import APP_VERSION, BETWEENPAY_SITE, CHANNELS
 from .connectors import BufferPublisher, SupabaseConnector
 from .models import EngineDecision, MetricsSnapshot
 from .templates import contest_variants, fallback_variants
@@ -263,7 +264,9 @@ class SalesEngine:
 
         metrics = self.supabase.collect_metrics()
         self.store.save_snapshot(metrics)
+        self.supabase.sync_snapshot(metrics)
         self._sync_experiments_from_metrics(metrics)
+        self.supabase.sync_experiments([dict(r) for r in self.store.experiments(limit=100)])
         self._sync_remote_social_queue()
         constraint, diagnosis, recommended = self._diagnose(metrics)
         target = self.store.get_int("weekly_sales_target", 100)
@@ -311,7 +314,126 @@ class SalesEngine:
             "status": "executed",
             "executed_at": datetime.now(timezone.utc).isoformat(),
         })
+        try:
+            buffer_state = self.buffer.test_connection()
+            self.supabase.update_heartbeat(
+                app_version=APP_VERSION,
+                autopilot=self.store.get_bool("autopilot_enabled"),
+                target=target,
+                sales_7d=metrics.sales_7d,
+                last_strategy_cycle_at=datetime.now(timezone.utc).isoformat(),
+                connection_state={
+                    "supabase": True,
+                    "buffer": bool(buffer_state.get("ok")),
+                    "buffer_channels": buffer_state.get("channels") or [],
+                    "openai": bool(self.ai.configured()),
+                },
+                machine_state={
+                    "primary_constraint": constraint,
+                    "recommended_action": recommended,
+                    "ai_calls_today": self.store.ai_calls_today(),
+                    "queue_items": len(self.store.content_queue(500)),
+                },
+            )
+        except Exception:
+            pass
         return decision
+
+    def process_remote_commands(self) -> dict[str, int]:
+        summary = {"completed": 0, "failed": 0, "rejected": 0}
+        if not self.supabase.configured():
+            return summary
+        allowed_settings = {
+            "daily_post_cap", "engine_interval_minutes", "publish_interval_minutes",
+            "openai_daily_call_limit", "openai_model", "pinterest_board_name",
+            "min_sessions_before_judgment", "min_checkouts_before_judgment",
+        }
+        for command_row in self.supabase.pending_commands(20):
+            command_id = int(command_row["id"])
+            command = str(command_row.get("command") or "").strip()
+            payload = command_row.get("payload") or {}
+            self.supabase.update_command(command_id, "running")
+            try:
+                result: dict[str, Any]
+                if command == "run_engine":
+                    d = self.run_once()
+                    result = {
+                        "constraint": d.primary_constraint,
+                        "diagnosis": d.diagnosis,
+                        "sales_7d": d.sales_7d,
+                        "target": d.target,
+                        "gap": d.gap,
+                    }
+                elif command == "publish_due":
+                    result = self.publish_due()
+                elif command == "set_weekly_target":
+                    target = max(1, min(int(payload.get("target", 100)), 100000))
+                    self.store.set("weekly_sales_target", target)
+                    result = {"weekly_sales_target": target}
+                elif command == "set_autopilot":
+                    enabled = bool(payload.get("enabled", False))
+                    self.store.set("autopilot_enabled", "1" if enabled else "0")
+                    result = {"autopilot_enabled": enabled}
+                elif command == "set_setting":
+                    key = str(payload.get("key") or "")
+                    if key not in allowed_settings:
+                        raise PermissionError(f"Setting '{key}' is not remotely changeable.")
+                    value = payload.get("value")
+                    self.store.set(key, value)
+                    result = {"key": key, "value": str(value)}
+                elif command == "queue_content":
+                    platform = str(payload.get("platform") or "").lower()
+                    text = str(payload.get("text") or "").strip()
+                    destination = str(payload.get("destination") or "").strip()
+                    if platform not in CHANNELS:
+                        raise PermissionError("Unsupported publishing platform.")
+                    if not text or len(text) > 5000:
+                        raise ValueError("Content text must be between 1 and 5000 characters.")
+                    if destination and not destination.startswith(BETWEENPAY_SITE):
+                        raise PermissionError("Remote queue content may only link to BetweenPay.")
+                    scheduled_for = str(payload.get("scheduled_for") or datetime.now(timezone.utc).isoformat())
+                    item = {
+                        "platform": platform,
+                        "post_type": payload.get("post_type") or ("pin" if platform == "pinterest" else "post"),
+                        "theme": payload.get("theme") or "chatgpt",
+                        "growth_angle": payload.get("growth_angle") or "chatgpt",
+                        "text": text,
+                        "title": payload.get("title"),
+                        "destination": destination or BETWEENPAY_SITE,
+                        "asset_url": payload.get("asset_url"),
+                        "source": payload.get("source") or platform,
+                        "medium": "organic",
+                        "campaign": payload.get("campaign") or "sales_os",
+                        "content": payload.get("content") or f"chatgpt_{command_id}",
+                        "experiment_key": payload.get("experiment_key") or f"{platform}:sales_os:chatgpt_{command_id}",
+                        "scheduled_for": scheduled_for,
+                        "status": "ready",
+                        "provider": "buffer",
+                    }
+                    local_id = self.store.queue_content(item)
+                    result = {"queued": True, "local_content_id": local_id, "platform": platform}
+                else:
+                    self.supabase.update_command(
+                        command_id, "rejected", error=f"Unsupported command: {command}"
+                    )
+                    summary["rejected"] += 1
+                    continue
+                self.supabase.update_command(command_id, "completed", result=result)
+                self.store.log_action(
+                    "remote_command",
+                    f"Completed cloud command: {command}",
+                    payload={"command_id": command_id, "payload": payload},
+                    status="executed",
+                    result=result,
+                )
+                summary["completed"] += 1
+            except PermissionError as exc:
+                self.supabase.update_command(command_id, "rejected", error=str(exc))
+                summary["rejected"] += 1
+            except Exception as exc:
+                self.supabase.update_command(command_id, "failed", error=str(exc))
+                summary["failed"] += 1
+        return summary
 
     def publish_due(self) -> dict[str, int]:
         summary = {"published": 0, "scheduled": 0, "failed": 0, "blocked": 0}
@@ -381,6 +503,19 @@ class SalesEngine:
                     status="blocked" if blocked else "failed",
                 )
                 summary["blocked" if blocked else "failed"] += 1
+        try:
+            snap = self.store.latest_snapshot()
+            sales = int(snap["sales_7d"]) if snap else 0
+            self.supabase.update_heartbeat(
+                app_version=APP_VERSION,
+                autopilot=self.store.get_bool("autopilot_enabled"),
+                target=self.store.get_int("weekly_sales_target", 100),
+                sales_7d=sales,
+                last_publish_cycle_at=datetime.now(timezone.utc).isoformat(),
+                machine_state={"last_publish_summary": summary},
+            )
+        except Exception:
+            pass
         return summary
 
     def reconcile_buffer_posts(self) -> int:
