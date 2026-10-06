@@ -22,7 +22,7 @@ class AIPlanner:
             return []
         from openai import OpenAI
         key = get_secret("openai_api_key")
-        model = self.store.get("openai_model", "gpt-5.5")
+        model = self.store.get("openai_model", "gpt-5.6-luna")
         client = OpenAI(api_key=key)
         prompt = {
             "goal": "Increase legitimate BetweenPay purchases toward 100 completed sales in a rolling 7-day window.",
