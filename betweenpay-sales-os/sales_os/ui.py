@@ -185,8 +185,9 @@ class MainWindow(QMainWindow):
         w = QWidget()
         lay = QVBoxLayout(w)
         info = QLabel(
-            "Experiments are ranked from measured sessions, checkout starts, purchases and revenue. "
-            "Small samples are discounted."
+            "Only intentionally tagged marketing tests appear here. Experiments are ranked from unique measured "
+            "sessions, unique checkout-start sessions, purchases and revenue. Small samples are discounted and "
+            "should not be treated as winners or losers yet."
         )
         info.setWordWrap(True)
         lay.addWidget(info)
