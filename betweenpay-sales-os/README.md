@@ -17,7 +17,8 @@ The engine follows a closed loop:
 - Optional start-at-login support.
 - Pulls live BetweenPay funnel, order, lead and referral data from Supabase.
 - Calculates rolling 7-day and 24-hour sales/funnel performance. Checkout-start and purchase-rate dashboard percentages use unique measured sessions so repeated checkout events do not inflate conversion.
-- Scores traffic sources and campaign/content experiments.
+- Scores intentionally tagged campaign/content experiments separately from unattributed/direct traffic.
+- Uses unique sessions for source-level checkout-start rates so repeat checkout events cannot inflate experiment scores.
 - Protects small samples from premature winner/loser decisions.
 - Syncs the existing BetweenPay social queue into the desktop program.
 - Publishes due Facebook, X and Pinterest content through Buffer's API, including the channel-specific Facebook post type metadata required by Buffer.
