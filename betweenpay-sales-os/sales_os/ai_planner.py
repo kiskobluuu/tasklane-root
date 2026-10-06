@@ -17,12 +17,28 @@ class AIPlanner:
     def allowed_today(self) -> bool:
         return self.store.ai_calls_today() < self.store.get_int("openai_daily_call_limit", 6)
 
+    def test_connection(self) -> dict[str, Any]:
+        key = get_secret("openai_api_key")
+        if not key:
+            return {"ok": False, "message": "OpenAI API key missing."}
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=key)
+            models = client.models.list()
+            model = self.store.get("openai_model", "gpt-6-luna")
+            available = any(getattr(m, "id", None) == model for m in getattr(models, "data", []) or [])
+            if available:
+                return {"ok": True, "message": f"OpenAI API key valid; model {model} is available."}
+            return {"ok": True, "message": f"OpenAI API key valid. Model {model} was not listed for this account; change the model in Settings if an AI call fails."}
+        except Exception as exc:
+            return {"ok": False, "message": str(exc)[:500]}
+
     def generate_campaign_variants(self, metrics, diagnosis: str, channels: list[str], count: int = 3) -> list[dict[str, Any]]:
         if not self.configured() or not self.allowed_today():
             return []
         from openai import OpenAI
         key = get_secret("openai_api_key")
-        model = self.store.get("openai_model", "gpt-5.6-luna")
+        model = self.store.get("openai_model", "gpt-6-luna")
         client = OpenAI(api_key=key)
         experiment_memory = []
         for row in self.store.experiments(limit=15):
