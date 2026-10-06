@@ -106,6 +106,13 @@ class SalesEngine:
                 "learnings": learning,
             })
 
+    def _sync_acquisition_queue(self) -> int:
+        if not self.supabase.configured():
+            return 0
+        rows = self.supabase.fetch_acquisition_queue(300)
+        self.store.upsert_acquisition_items(rows)
+        return len(rows)
+
     def _sync_remote_social_queue(self) -> int:
         if not self.supabase.configured():
             return 0
@@ -267,6 +274,7 @@ class SalesEngine:
         self.supabase.sync_snapshot(metrics)
         self._sync_experiments_from_metrics(metrics)
         self.supabase.sync_experiments([dict(r) for r in self.store.experiments(limit=100)])
+        self._sync_acquisition_queue()
         self._sync_remote_social_queue()
         constraint, diagnosis, recommended = self._diagnose(metrics)
         target = self.store.get_int("weekly_sales_target", 100)
