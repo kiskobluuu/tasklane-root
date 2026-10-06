@@ -21,6 +21,7 @@ The engine follows a closed loop:
 - Protects small samples from premature winner/loser decisions.
 - Syncs the existing BetweenPay social queue into the desktop program.
 - Publishes due Facebook, X and Pinterest content through Buffer's API, including the channel-specific Facebook post type metadata required by Buffer.
+- Normalizes social copy before publishing so literal `\\n` escape sequences cannot appear in public posts, collapses excessive blank lines, and adds conservative paragraph spacing to long Facebook copy.
 - Reconciles Buffer post status back into the local queue.
 - Updates the original Supabase social queue after provider confirmation.
 - Uses permanent BetweenPay campaign image URLs, avoiding browser file-picker automation.
