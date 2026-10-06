@@ -215,6 +215,16 @@ class SupabaseConnector:
             raw=raw,
         )
 
+    def fetch_acquisition_queue(self, limit: int = 300) -> list[dict]:
+        return self.get(
+            "betweenpay_acquisition_queue",
+            {
+                "select": "id,channel,placement,priority,status,destination,source,medium,campaign,content,notes",
+                "order": "priority.desc,id.asc",
+                "limit": str(limit),
+            },
+        )
+
     def fetch_remote_social_queue(self, limit: int = 100) -> list[dict]:
         return self.get(
             "betweenpay_social_queue",
