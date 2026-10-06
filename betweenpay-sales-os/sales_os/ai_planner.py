@@ -4,6 +4,7 @@ import json
 from typing import Any
 
 from .config import ASSET_URLS, CALCULATOR_URL, CONTEST_URL, PRODUCT_URL
+from .formatting import normalize_social_text
 from .vault import get_secret
 
 
@@ -82,6 +83,8 @@ class AIPlanner:
                 "Exploit measured winners more often, but reserve the configured exploration share for genuinely new angles.",
                 "Do not repeat the same content slug or wording from experiment_memory; create a measurable evolution of a winner or a distinct exploration test.",
                 "Facebook may be longer; X concise; Pinterest requires a useful search-style title and description.",
+                "Formatting is part of quality: use real line breaks, never literal \\n or \\t text, and never publish a wall of text.",
+                "Facebook copy should normally use 2-4 short paragraphs with a blank line between paragraphs when longer than a few sentences.",
             ],
             "output": f"Return exactly {count} campaign variants as JSON.",
         }
@@ -122,7 +125,7 @@ class AIPlanner:
                     "platform": platform,
                     "angle": str(v.get("angle") or "product_value")[:80],
                     "theme": str(v.get("theme") or "ai_generated")[:80],
-                    "text": str(v.get("text") or "").strip(),
+                    "text": normalize_social_text(v.get("text"), platform),
                     "title": str(v.get("title") or "").strip() or None,
                     "destination": destination,
                     "asset_url": ASSET_URLS.get(asset_type, ASSET_URLS["product"]),
