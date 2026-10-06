@@ -24,8 +24,21 @@ class AIPlanner:
         key = get_secret("openai_api_key")
         model = self.store.get("openai_model", "gpt-5.6-luna")
         client = OpenAI(api_key=key)
+        experiment_memory = []
+        for row in self.store.experiments(limit=15):
+            experiment_memory.append({
+                "experiment_key": row["experiment_key"],
+                "channel": row["channel"],
+                "angle": row["angle"],
+                "status": row["status"],
+                "sessions": row["sessions"],
+                "checkout_starts": row["checkout_starts"],
+                "purchases": row["purchases"],
+                "revenue": row["revenue"],
+                "score": row["score"],
+            })
         prompt = {
-            "goal": "Increase legitimate BetweenPay purchases toward 100 completed sales in a rolling 7-day window.",
+            "goal": f"Increase legitimate BetweenPay purchases toward {self.store.get_int('weekly_sales_target', 100)} completed sales in a rolling 7-day window.",
             "product": {
                 "name": "BetweenPay",
                 "price": "$12.99 one-time",
@@ -41,6 +54,8 @@ class AIPlanner:
                 "sales_24h": metrics.sales_24h,
                 "source_performance": metrics.source_performance[:12],
             },
+            "experiment_memory": experiment_memory,
+            "exploration_share": self.store.get_float("exploration_share", 0.30),
             "channels": channels,
             "rules": [
                 "Organic only; no paid advertising.",
@@ -48,6 +63,8 @@ class AIPlanner:
                 "No deceptive urgency, fake social proof, fake personal experience, or winning guarantees.",
                 "Use distinct UTM content labels so variants can be measured.",
                 "Prefer product-first or free-calculator value unless contest-first is strategically justified.",
+                "Exploit measured winners more often, but reserve the configured exploration share for genuinely new angles.",
+                "Do not repeat the same content slug or wording from experiment_memory; create a measurable evolution of a winner or a distinct exploration test.",
                 "Facebook may be longer; X concise; Pinterest requires a useful search-style title and description.",
             ],
             "output": f"Return exactly {count} campaign variants as JSON.",
