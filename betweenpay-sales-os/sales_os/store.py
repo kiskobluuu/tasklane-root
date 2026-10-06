@@ -166,6 +166,15 @@ class Store:
             )
             self.conn.commit()
 
+            # v1.0.5 repair: unattributed/direct traffic belongs in funnel analytics,
+            # not in the controlled experiment ranking.
+            self.conn.execute(
+                """DELETE FROM experiments
+                   WHERE lower(COALESCE(campaign,'none')) IN ('','none')
+                     AND lower(COALESCE(content,'none')) IN ('','none')"""
+            )
+            self.conn.commit()
+
             # v1.0.3 repair: Buffer requires Facebook metadata.type.
             self.conn.execute(
                 """UPDATE content_queue
