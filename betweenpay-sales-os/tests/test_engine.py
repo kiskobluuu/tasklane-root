@@ -32,3 +32,25 @@ def test_target_reached(tmp_path):
 def test_checkout_rate_is_bounded():
     metrics = MetricsSnapshot(sessions_7d=12, checkout_starts_7d=12, sales_7d=0)
     assert metrics.checkout_start_rate == 1.0
+
+
+def test_unattributed_traffic_is_not_ranked_as_experiment(tmp_path):
+    store, engine = make_engine(tmp_path)
+    metrics = MetricsSnapshot(
+        source_performance=[
+            {
+                "source": "direct", "medium": "none", "campaign": "none", "content": "none",
+                "sessions": 12, "checkout_starts": 5, "purchases": 0, "revenue": 0,
+            },
+            {
+                "source": "facebook", "medium": "organic", "campaign": "live_10k",
+                "content": "contest_announcement", "sessions": 4, "checkout_starts": 0,
+                "purchases": 0, "revenue": 0,
+            },
+        ]
+    )
+    engine._sync_experiments_from_metrics(metrics)
+    experiments = [dict(row) for row in store.experiments(limit=20)]
+    keys = {row["experiment_key"] for row in experiments}
+    assert "direct:none:none" not in keys
+    assert "facebook:live_10k:contest_announcement" in keys
