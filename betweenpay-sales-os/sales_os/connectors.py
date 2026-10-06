@@ -165,12 +165,12 @@ class SupabaseConnector:
             )
             x = perf.setdefault(key, {
                 "source": key[0], "medium": key[1], "campaign": key[2], "content": key[3],
-                "sessions_set": set(), "checkout_starts": 0, "purchases": 0, "revenue": 0.0,
+                "sessions_set": set(), "checkout_sessions_set": set(), "purchases": 0, "revenue": 0.0,
             })
             if e.get("session_id"):
                 x["sessions_set"].add(e["session_id"])
-            if e.get("event_name") == "checkout_start":
-                x["checkout_starts"] += 1
+                if e.get("event_name") == "checkout_start":
+                    x["checkout_sessions_set"].add(e["session_id"])
 
         for o in completed7:
             key = (
@@ -181,7 +181,7 @@ class SupabaseConnector:
             )
             x = perf.setdefault(key, {
                 "source": key[0], "medium": key[1], "campaign": key[2], "content": key[3],
-                "sessions_set": set(), "checkout_starts": 0, "purchases": 0, "revenue": 0.0,
+                "sessions_set": set(), "checkout_sessions_set": set(), "purchases": 0, "revenue": 0.0,
             })
             x["purchases"] += 1
             x["revenue"] += float(o.get("amount") or 0)
@@ -189,9 +189,11 @@ class SupabaseConnector:
         source_performance: list[dict[str, Any]] = []
         for x in perf.values():
             sessions = len(x.pop("sessions_set"))
+            checkout_starts = len(x.pop("checkout_sessions_set"))
             x["sessions"] = sessions
+            x["checkout_starts"] = checkout_starts
             x["purchase_rate"] = (x["purchases"] / sessions) if sessions else 0.0
-            x["checkout_rate"] = (x["checkout_starts"] / sessions) if sessions else 0.0
+            x["checkout_rate"] = (checkout_starts / sessions) if sessions else 0.0
             source_performance.append(x)
         source_performance.sort(key=lambda x: (x["purchases"], x["revenue"], x["sessions"]), reverse=True)
 
