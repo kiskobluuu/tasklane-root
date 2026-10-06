@@ -495,6 +495,9 @@ class BufferPublisher:
             "assets": [{"image": {"url": item["asset_url"]}}] if item.get("asset_url") else [],
         }
 
+        if platform == "facebook":
+            input_obj["metadata"] = {"facebook": {"type": "post"}}
+
         if platform == "x" and item.get("post_type") == "thread":
             try:
                 thread = json.loads(item.get("performance") or "{}").get("thread")
