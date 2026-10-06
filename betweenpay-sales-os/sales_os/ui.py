@@ -29,6 +29,7 @@ class MainWindow(QMainWindow):
         self.tabs = QTabWidget()
         self.tabs.addTab(self._dashboard(), "Command Center")
         self.tabs.addTab(self._queue_tab(), "Content Queue")
+        self.tabs.addTab(self._acquisition_tab(), "Acquisition Channels")
         self.tabs.addTab(self._experiments_tab(), "Experiments")
         self.tabs.addTab(self._actions_tab(), "Activity & Learning")
         self.tabs.addTab(self._connections_tab(), "Connections")
@@ -159,6 +160,24 @@ class MainWindow(QMainWindow):
         self.queue_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.queue_table.horizontalHeader().setStretchLastSection(True)
         lay.addWidget(self.queue_table)
+        return w
+
+    def _acquisition_tab(self):
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        info = QLabel(
+            "This is the full BetweenPay acquisition backlog, including SEO, directories, social, "
+            "product/community placements and editorial outreach. Status is synchronized from Supabase."
+        )
+        info.setWordWrap(True)
+        lay.addWidget(info)
+        self.acq_table = QTableWidget(0, 8)
+        self.acq_table.setHorizontalHeaderLabels(
+            ["Priority", "Channel", "Placement", "Status", "Campaign", "Source", "Destination", "Notes"]
+        )
+        self.acq_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.acq_table.horizontalHeader().setStretchLastSection(True)
+        lay.addWidget(self.acq_table)
         return w
 
     def _experiments_tab(self):
@@ -436,6 +455,7 @@ class MainWindow(QMainWindow):
             + ("background:#dff3eb;color:#146e58" if on else "background:#f0e4e4;color:#8b3232")
         )
         self.refresh_queue()
+        self.refresh_acquisition()
         self.refresh_experiments()
         self.refresh_actions()
 
@@ -451,6 +471,17 @@ class MainWindow(QMainWindow):
             ]
             for j, value in enumerate(vals):
                 self.queue_table.setItem(i, j, QTableWidgetItem(str(value)))
+
+    def refresh_acquisition(self):
+        rows = self.store.acquisition_items(300)
+        self.acq_table.setRowCount(len(rows))
+        for i, row in enumerate(rows):
+            vals = [
+                row["priority"], row["channel"], row["placement"] or "", row["status"],
+                row["campaign"] or "", row["source"] or "", row["destination"] or "", row["notes"] or "",
+            ]
+            for j, value in enumerate(vals):
+                self.acq_table.setItem(i, j, QTableWidgetItem(str(value)))
 
     def refresh_experiments(self):
         rows = self.store.experiments(limit=250)
